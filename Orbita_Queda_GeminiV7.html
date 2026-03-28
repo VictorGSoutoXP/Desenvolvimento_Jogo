@@ -14,7 +14,7 @@
   --amber:   #ffaa00;
   --red:     #ff2244;
   --bio:     #2dcc70;
-  --crystal: #e800cc;
+  --crystal: #00bbff; /* Azul brilhante/ciano em vez de magenta */
   --text:    #b8d4dc;
   --dim:     #3a5a6a;
   --panel:   rgba(0, 8, 20, 0.96);
@@ -888,13 +888,14 @@ class AstronautBase {
       ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(12, -3); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0, 7); ctx.lineTo(12, 3); ctx.stroke();
 
+      // Ferramenta padronizada (ponta colorida dependendo de ser aliado ou player)
       ctx.fillStyle = '#111';
       ctx.fillRect(10, -4, 14, 8);
-      ctx.fillStyle = '#ff00cc';
+      ctx.fillStyle = highlightColor;
       ctx.beginPath(); ctx.moveTo(24, -3); ctx.lineTo(34 + (this.drilling ? rnd(0,4) : 0), 0); ctx.lineTo(24, 3); ctx.fill();
       
       if (this.drilling) {
-        ctx.fillStyle = 'rgba(255, 0, 200, 0.8)';
+        ctx.fillStyle = isAlly ? 'rgba(0, 255, 204, 0.8)' : 'rgba(255, 170, 0, 0.8)';
         ctx.beginPath(); ctx.arc(32, 0, 5 + rnd(0,3), 0, Math.PI*2); ctx.fill();
       } else if (this.fireCooldown > 0.15) {
         ctx.fillStyle = '#00e5ff';
@@ -1051,10 +1052,10 @@ class AllyBot extends AstronautBase {
            this.drilling = true;
            if (!nearestEn) this.angle = Math.atan2(nearestCry.y - this.y, nearestCry.x - this.x);
            nearestCry.integrity -= dt * 22; // Bot perfura um pouco mais devagar
-           if(Math.random()<0.1) E._spawnParts(nearestCry.x, nearestCry.y, 'rgba(255,100,255,0.8)', 1, 'SURFACE');
+           if(Math.random()<0.1) E._spawnParts(nearestCry.x, nearestCry.y, 'rgba(100,200,255,0.8)', 1, 'SURFACE');
            if (nearestCry.integrity <= 0) {
              nearestCry.depleted = true; R.crystal++;
-             E._spawnParts(nearestCry.x, nearestCry.y, 'rgba(255,0,200,0.9)', 14, 'SURFACE');
+             E._spawnParts(nearestCry.x, nearestCry.y, 'rgba(0,150,255,0.9)', 14, 'SURFACE');
              if (R.crystal >= 3) {
                const infGain = 10 + Math.floor(S.infection * 0.12) + Math.floor(Math.random() * 8);
                Game.missionReturn(R.crystal, infGain);
@@ -1259,7 +1260,7 @@ class AbyssalLeviathan {
   }
 }
 
-// ─── CRYSTAL NODE (GELO -> CRISTAL) ─────────────────────────
+// ─── CRYSTAL NODE (GELO -> CRISTAL AZUL) ─────────────────────────
 class CrystalNode {
   constructor(x, y) {
     this.x = x; this.y = y;
@@ -1284,9 +1285,10 @@ class CrystalNode {
     const p = this.integrity / 100;
     const pulse = 1 + Math.sin(this.t * 2) * 0.08;
 
+    // Brilho Azulado intenso
     const g = ctx.createRadialGradient(this.x, this.y, 2, this.x, this.y, 35);
-    g.addColorStop(0, `rgba(255, 0, 200, ${p*0.5})`);
-    g.addColorStop(1, 'rgba(150, 0, 255, 0)');
+    g.addColorStop(0, `rgba(0, 150, 255, ${p*0.5})`);
+    g.addColorStop(1, 'rgba(0, 100, 255, 0)');
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(this.x, this.y, 35, 0, Math.PI*2); ctx.fill();
 
@@ -1301,13 +1303,13 @@ class CrystalNode {
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
     ctx.closePath();
-    ctx.fillStyle = `rgba(200, 50, 255, ${p*0.65})`;
+    ctx.fillStyle = `rgba(50, 150, 255, ${p*0.65})`;
     ctx.fill();
-    ctx.strokeStyle = `rgba(255, 150, 255, ${p*0.9})`;
+    ctx.strokeStyle = `rgba(150, 220, 255, ${p*0.9})`;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    ctx.strokeStyle = `rgba(255, 200, 255, ${p*0.5})`;
+    ctx.strokeStyle = `rgba(180, 230, 255, ${p*0.5})`;
     ctx.lineWidth = 1;
     for (let i = 0; i < 4; i++) {
       const v1 = this.verts[i % this.verts.length];
@@ -1318,7 +1320,7 @@ class CrystalNode {
       ctx.stroke();
     }
 
-    ctx.fillStyle = `rgba(255, 200, 255, ${p*0.9})`;
+    ctx.fillStyle = `rgba(200, 240, 255, ${p*0.9})`;
     ctx.beginPath(); ctx.arc(0, 0, 5*p, 0, Math.PI*2); ctx.fill();
     ctx.restore();
   }
@@ -1540,7 +1542,6 @@ const E = {
 
     this.enemies = [];
     this.bullets = [];
-    // Spawn Leviathans instead of Rival Subs
     const numMercs = 1 + Math.floor(S.dives / 2);
     for(let i=0; i < numMercs; i++) {
       this.enemies.push(new AbyssalLeviathan(512 + rnd(-600, 600), 288 + rnd(-500, 500)));
@@ -1635,8 +1636,6 @@ const E = {
           if (Game.scene === 'SURFACE') {
             R.hp -= 15;
             if (R.hp <= 0) Game.over('Despedaçado pela fauna local.', 'combat');
-          } else {
-            // Not used, Leviathans bite instead of shoot now
           }
         }
       }
@@ -1694,7 +1693,7 @@ const E = {
       if (near) {
         this.player.drilling = true;
         near.integrity -= dt * 38;
-        this._spawnParts(near.x, near.y, 'rgba(255,100,255,0.8)', 2, 'SURFACE');
+        this._spawnParts(near.x, near.y, 'rgba(100,200,255,0.8)', 2, 'SURFACE');
         
         if (Math.random() < 0.014) {
           this.biofilms.push(new Biofilm(this.player.x + rnd(-280,280), this.player.y + rnd(-280,280), rnd(18,32), 'surface'));
@@ -1702,7 +1701,7 @@ const E = {
         if (near.integrity <= 0) {
           near.depleted = true;
           R.crystal++;
-          this._spawnParts(near.x, near.y, 'rgba(255,0,200,0.9)', 14, 'SURFACE');
+          this._spawnParts(near.x, near.y, 'rgba(0,150,255,0.9)', 14, 'SURFACE');
           if (R.crystal >= 3) {
             const infGain = 10 + Math.floor(S.infection * 0.12) + Math.floor(Math.random() * 8);
             Game.missionReturn(R.crystal, infGain);
@@ -1763,7 +1762,6 @@ const E = {
         const nx = this.player.x - c.x, ny = this.player.y - c.y;
         const nl = Math.sqrt(nx*nx+ny*ny) || 1;
         this.player.vx = (nx/nl)*70; this.player.vy = (ny/nl)*70; 
-        // Colisão com submarino dá dano minúsculo, apenas punitivo
         S.hull -= 0.5;
         flashFx('rgba(255,34,68,0.1)');
         if (S.hull <= 0) { Game.over('Você colidiu forte demais. Rachaduras cederam à pressão.', 'hull'); return; }
@@ -1872,7 +1870,7 @@ const E = {
     lctx.fillRect(0, 0, W, H);
     lctx.globalCompositeOperation = 'destination-out';
 
-    // Luz dos Bots (menor)
+    // Luz dos Bots
     this.allies.forEach(a => {
        const ax = a.x - this.camX, ay = a.y - this.camY;
        const aAmb = lctx.createRadialGradient(ax,ay,0,ax,ay,50);
@@ -1913,7 +1911,6 @@ const E = {
 
     ctx.save();
     ctx.translate(-this.camX, -this.camY);
-    // Desenha entidades por cima do filtro
     this.allies.forEach(a => a.draw(ctx, 'SURFACE', true));
     this.player.draw(ctx, 'SURFACE');
     ctx.restore();
@@ -1936,7 +1933,6 @@ const E = {
 
     const infAlpha = S.infection / 100;
     
-    // ── Desenhar o Submarino Khepri-9 Gigante ──
     const subX = 512, subY = 288;
     ctx.fillStyle = 'rgba(0,180,255,0.05)';
     ctx.beginPath(); ctx.ellipse(subX, subY+40, 400, 150, 0, 0, Math.PI*2); ctx.fill();
@@ -1999,7 +1995,6 @@ const E = {
     lctx.fillRect(0, 0, W, H);
     lctx.globalCompositeOperation = 'destination-out';
 
-    // Luz dos Bots (menor)
     this.allies.forEach(a => {
        const ax = a.x - this.camX, ay = a.y - this.camY;
        const aAmb = lctx.createRadialGradient(ax,ay,0,ax,ay,60);

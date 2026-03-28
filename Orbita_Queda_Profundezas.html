@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Órbita & Queda — Profundezas de Encélado</title>
+  <!--
+    Conceito de jogo inspirado nas sugestões de mergulho abissal em Encélado.
+    O cenário troca o espaço pelo oceano subglacial, apresentando uma
+    atmosfera de terror e exploração. O submarino Khepri‑9 se torna a
+    base móvel da operação, enquanto cristais de Éter justificam a
+    incursão e criaturas marinhas alienígenas desafiam a sobrevivência.
+  -->
+  <style>
+    :root {
+      --bg: #020510;
+      --panel: rgba(3, 8, 20, 0.95);
+      --border: rgba(0, 200, 232, 0.15);
+      --text: #cde7f2;
+      --muted: #6c8a9c;
+      --cyan: #00c8e8;
+      --amber: #ffaa00;
+      --red: #ff3344;
+      --green: #00e886;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+    }
+    body {
+      background: radial-gradient(circle at top, #04121f 0%, #020510 60%, #01030a 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    #container {
+      max-width: 960px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 32px;
+      box-shadow: 0 0 30px rgba(0, 200, 232, 0.08);
+    }
+    h1 {
+      color: var(--cyan);
+      font-size: clamp(36px, 6vw, 52px);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    h2 {
+      color: var(--amber);
+      font-size: clamp(20px, 3vw, 28px);
+      margin-top: 28px;
+      margin-bottom: 8px;
+    }
+    p {
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+    ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    li {
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    strong {
+      color: var(--cyan);
+    }
+    img {
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1>Órbita &amp; Queda</h1>
+    <h2>Profundezas de Encélado</h2>
+    <p>
+      Após décadas explorando campos de asteroides e luas geladas, a corporação Helix decide
+      perfurar o oceano subglacial de Encélado. Sob quilômetros de gelo, pressões titânicas
+      forjam <strong>Cristais de Éter</strong> — supercondutores quânticos capazes de resolver a crise
+      energética da Terra e valer fortunas incalculáveis. Para extraí‑los, o submarino
+      <strong>Khepri‑9</strong> mergulha nas trevas abissais, onde criaturas alienígenas protegem seu
+      território.
+    </p>
+    <img src="54cd37bd-2862-4327-8144-1fec44b89724.png" alt="Submarino enfrentando Leviatãs alienígenas e coletando cristais" />
+    <h2>Ambiente</h2>
+    <p>
+      O espaço estrelado cede lugar às <strong>águas profundas e escuras</strong> do oceano subglacial.
+      Bolhas de gás sobem constantemente, partículas bioluminescentes flutuam e a
+      visibilidade é reduzida. A sensação é de um abismo interminável, onde qualquer
+      som ecoa e a pressão pode esmagar o casco.
+    </p>
+    <h2>Recursos de Alto Valor</h2>
+    <ul>
+      <li><strong>Cristais de Éter:</strong> Formados apenas sob pressões absurdas, esses cristais
+          funcionam como supercondutores quânticos. Cada unidade contém energia suficiente
+          para alimentar uma cidade por anos, tornando‑os o material mais cobiçado do sistema
+          solar. São a razão principal para arriscar‑se nas profundezas de Encélado.</li>
+      <li><strong>Gelo Exótico (Ice‑VII):</strong> Água solidificada em uma fase rara que aprisiona
+          moléculas de gás em alta densidade. Pode ser processada em combustível para
+          reatores de fusão.</li>
+    </ul>
+    <h2>Inimigos</h2>
+    <ul>
+      <li><strong>Peixes Carnívoros Alienígenas:</strong> Pequenas criaturas vermelhas que nadam
+          em cardumes. Aproximam‑se rapidamente e mordem qualquer intruso, causando dano
+          contínuo até serem eliminadas.</li>
+      <li><strong>Leviatãs Abissais:</strong> Enguias gigantes com múltiplos olhos e mandíbulas
+          serrilhadas. Sentem vibrações e calor, investem contra o <em>Khepri‑9</em> e o mordem,
+          causando dano gradual ao casco. Podem ser enfrentados a nado.</li>
+      <li><strong>Nadir — a Anomalia Interna:</strong> Uma biomassa alienígena que se fixou dentro do
+          submarino. Ela consome lentamente a energia dos cristais, drenando a vida do
+          veículo, mas pode ser atacada por mergulhadores se localizarem seu núcleo.</li>
+    </ul>
+    <h2>Bots e Equipe Aliada</h2>
+    <p>
+      Você não está sozinho. <strong>Batedores Autônomos</strong> equipados com trajes de luz verde o
+      acompanham nos mergulhos. Eles extraem cristais, soldam o casco quando há vazamentos
+      e disparam contra criaturas hostis. Caso você seja abatido, eles continuam a missão,
+      mantendo as operações da Helix em andamento.
+    </p>
+    <h2>Loop de Jogo</h2>
+    <p>
+      Cada ciclo segue três etapas principais:
+    </p>
+    <ul>
+      <li>Descer ao leito oceânico para perfurar e coletar Cristais de Éter, eliminando
+          biofilmes e defendendo‑se dos peixes carnívoros.</li>
+      <li>Navegar nas <em>águas abertas</em> ao redor do submarino, combatendo Leviatãs e
+          protegendo o casco contra mordidas enquanto a equipe extrai cristais.</li>
+      <li>Retornar aos compartimentos internos para refinar os recursos, reparar danos e
+          lidar com o Nadir antes de iniciar um novo mergulho.</li>
+    </ul>
+    <h2>Controles</h2>
+    <p>
+      <strong>[WASD]</strong> Nadar • <strong>[Mouse]</strong> Orientar • <strong>[Clique Esquerdo]</strong>
+      Atirar/Perfurar • <strong>[F]</strong> Scanner
+    </p>
+  </div>
+</body>
+</html>
