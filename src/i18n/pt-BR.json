@@ -1,0 +1,79 @@
+{
+  "boot": {
+    "languageLabel": "Idioma"
+  },
+  "hud": {
+    "wave": "ONDA",
+    "bioScanner": "SCANNER BIO",
+    "suit": "TRAJE",
+    "heating": "AQUECIMENTO",
+    "ammo": "MUNIÇÃO",
+    "crystals": "CRISTAIS",
+    "thruster": "PROPULSOR",
+    "spaceCenter": "CASCO EXTERNO · ZONA DE COMBATE",
+    "surfacePrompt": "APROXIME-SE DE UM CRISTAL PARA EXTRAIR",
+    "spacePrompt": "CLIQUE PARA ATIRAR NOS LEVIATÃS",
+    "seabedWave": "LEITO OCEÂNICO · ONDA {wave}/{max}",
+    "scannerLevels": ["LIMPO", "TRAÇOS", "ATIVO", "CRÍTICO"],
+    "nadirPhenomenon": "FENÔMENO NADIR · {level}"
+  },
+  "station": {
+    "shiftAlpha": "TURNO {day} — OPERAÇÃO ALFA"
+  },
+  "units": {
+    "crystal": "{value} un."
+  },
+  "logs": {
+    "lore": [
+      "Mergulho 01 — Sistemas nominais. Cristais de Éter detectados no leito. Perturbamos sedimento antigo. Recomendo cautela.",
+      "Mergulho 02 — Fauna local reagiu às vibrações das perfuratrizes. Peixes abissais de 4 metros documentados. Agressivos.",
+      "Mergulho 03 — Novas criaturas identificadas: cefalópodes coloniais. Emitem esporos. Parecem coordenados. Origem: fissuras hidrotermais.",
+      "Mergulho 04 — AVISO: Infecção Nadir no reservatório D. Criaturas-Spawn dentro do casco. Helix bloqueou protocolo de purga.",
+      "Mergulho 05 — Leviatã Classe-3 avistado. 12 metros. Mandíbulas capazes de rasgar placas de titânio. Não saia sem escolta.",
+      "Mergulho 06 — O Nadir está se adaptando ao calor dos nossos sistemas. Spawn com padrões de ataque novos. Temo que aprenderam.",
+      "Mergulho 07 — Khepri-9 comprometido. Se isso for lido: o oceano não é vazio. Nunca foi. E agora é tarde demais."
+    ],
+    "briefs": [
+      "ONDA 1/5: Elimine a fauna local. Colete 5 cristais para retornar. Seu aliado cobrirá o flanco.",
+      "Resistência aumentando. Fauna mais agressiva após as primeiras extrações. Cuidado com os Spawn.",
+      "RELATÓRIO: Criaturas Nadir-Spawn detectadas em sua rota de coleta. São rápidas. Atirem primeiro.",
+      "ATENÇÃO: Leviatã maior registrado nesta zona. Concentre fogo. Não desperdice munição.",
+      "URGENTE: Nível crítico de infecção. Colete os cristais e recue. A estação não aguenta mais."
+    ],
+    "nadirStatus": [
+      "Nenhuma anomalia biológica no interior.",
+      "Vestígios de Spawn nas frestas de ventilação.",
+      "Biofilme ativo nos dutos de aquecimento. Crescimento lento.",
+      "ALERTA: Spawn dentro do setor de suporte de vida. Purga necessária.",
+      "RISCO CRÍTICO: Nadir domina sistemas centrais. Sobrevivência improvável."
+    ]
+  },
+  "gameOver": {
+    "fallbackTitle": "FALHA OPERACIONAL",
+    "titles": [
+      "MERGULHADOR PERDIDO",
+      "RUPTURA DE PRESSÃO",
+      "ASSIMILADO PELO NADIR",
+      "IMPLOSÃO ESTRUTURAL",
+      "FIM DO PROTOCOLO"
+    ],
+    "notes": {
+      "bio": "O Nadir parasitou os filtros do escafandro. Seus pulmões inalaram esporos coloniais.",
+      "battery": "Sem aquecimento, a pressão de 120 atm esmagou o traje em menos de 3 segundos.",
+      "hull": "As mandíbulas do Leviatã perfuraram o casco principal. Descompressão imediata.",
+      "combat": "Despedaçado pela fauna abissal. Seus restos alimentarão o ecossistema que perturbamos.",
+      "default": "A Corporação Helix lamenta informar. Sua família receberá a parcela mínima do contrato."
+    },
+    "causes": {
+      "totalContamination": "Contaminação total. Suporte de vida comprometido.",
+      "devouredByFauna": "Devorado pelas mandíbulas da fauna abissal.",
+      "assimilatedBySpores": "Assimilado pelos esporos do Nadir-Spawn.",
+      "rippedByLeviathan": "Estraçalhado pelo Leviatã Classe-3.",
+      "hullBreachByLeviathans": "O casco do Khepri-9 cedeu às mandíbulas dos Leviatãs.",
+      "killedByProjectile": "Abatido por projétil da fauna abissal.",
+      "noHeatingPressure": "Sem aquecimento. A pressão de 120atm esmagou o traje.",
+      "biofilmPenetration": "Biofilme Nadir penetrou o escafandro.",
+      "hullCollision": "Colisão com o casco do Khepri-9. Descompressão."
+    }
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "boot": {
+    "languageLabel": "Language"
+  },
+  "hud": {
+    "wave": "WAVE",
+    "bioScanner": "BIO SCANNER",
+    "suit": "SUIT",
+    "heating": "HEATING",
+    "ammo": "AMMO",
+    "crystals": "CRYSTALS",
+    "thruster": "THRUSTER",
+    "spaceCenter": "OUTER HULL · COMBAT ZONE",
+    "surfacePrompt": "MOVE CLOSER TO A CRYSTAL TO EXTRACT",
+    "spacePrompt": "CLICK TO SHOOT THE LEVIATHANS",
+    "seabedWave": "SEABED · WAVE {wave}/{max}",
+    "scannerLevels": ["CLEAR", "TRACES", "ACTIVE", "CRITICAL"],
+    "nadirPhenomenon": "NADIR PHENOMENON · {level}"
+  },
+  "station": {
+    "shiftAlpha": "SHIFT {day} — ALPHA OPERATION"
+  },
+  "units": {
+    "crystal": "{value} units"
+  },
+  "logs": {
+    "lore": [
+      "Dive 01 — Systems nominal. Ether Crystals detected on the seabed. We disturbed ancient sediment. Caution advised.",
+      "Dive 02 — Local fauna reacted to drilling vibrations. Four-meter abyssal fish documented. Aggressive.",
+      "Dive 03 — New creatures identified: colonial cephalopods. They emit spores and appear coordinated. Origin: hydrothermal fissures.",
+      "Dive 04 — WARNING: Nadir infection in reservoir D. Spawn creatures inside the hull. Helix blocked purge protocol.",
+      "Dive 05 — Class-3 Leviathan sighted. 12 meters. Jaws capable of tearing titanium plating. Do not deploy without escort.",
+      "Dive 06 — Nadir is adapting to the heat of our systems. Spawn show new attack patterns. I fear they learned.",
+      "Dive 07 — Khepri-9 compromised. If this is read: the ocean is not empty. It never was. And now it's too late."
+    ],
+    "briefs": [
+      "WAVE 1/5: Eliminate local fauna. Collect 5 crystals to return. Your ally will cover the flank.",
+      "Resistance increasing. Fauna is more aggressive after the first extractions. Watch for Spawn.",
+      "REPORT: Nadir-Spawn creatures detected on your collection route. Fast movers. Shoot first.",
+      "ALERT: Larger Leviathan registered in this zone. Focus fire. Do not waste ammo.",
+      "URGENT: Critical infection level. Collect the crystals and fall back. The station cannot hold much longer."
+    ],
+    "nadirStatus": [
+      "No biological anomalies inside.",
+      "Spawn traces found in ventilation gaps.",
+      "Active biofilm in heating ducts. Slow growth.",
+      "ALERT: Spawn inside life-support sector. Purge required.",
+      "CRITICAL RISK: Nadir controls core systems. Survival unlikely."
+    ]
+  },
+  "gameOver": {
+    "fallbackTitle": "OPERATIONAL FAILURE",
+    "titles": [
+      "DIVER LOST",
+      "PRESSURE RUPTURE",
+      "ASSIMILATED BY NADIR",
+      "STRUCTURAL IMPLOSION",
+      "PROTOCOL ENDED"
+    ],
+    "notes": {
+      "bio": "Nadir parasitized the suit filters. Your lungs inhaled colonial spores.",
+      "battery": "Without heating, 120 atm pressure crushed the suit in under 3 seconds.",
+      "hull": "Leviathan jaws punctured the main hull. Immediate decompression.",
+      "combat": "Torn apart by abyssal fauna. Your remains will feed the ecosystem we disturbed.",
+      "default": "Helix Corporation regrets to inform you. Your family will receive the minimum contract payout."
+    },
+    "causes": {
+      "totalContamination": "Total contamination. Life support compromised.",
+      "devouredByFauna": "Devoured by abyssal fauna jaws.",
+      "assimilatedBySpores": "Assimilated by Nadir-Spawn spores.",
+      "rippedByLeviathan": "Torn apart by a Class-3 Leviathan.",
+      "hullBreachByLeviathans": "Khepri-9 hull failed under Leviathan jaws.",
+      "killedByProjectile": "Taken down by an abyssal fauna projectile.",
+      "noHeatingPressure": "No heating. 120 atm pressure crushed the suit.",
+      "biofilmPenetration": "Nadir biofilm penetrated the suit.",
+      "hullCollision": "Collision with Khepri-9 hull. Decompression."
+    }
+  }
+}
