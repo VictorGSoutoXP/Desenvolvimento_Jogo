@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Órbita & Queda — Protótipo Web</title>
+  <style>
+    :root {
+      --bg: #080b14;
+      --panel: rgba(10, 16, 28, 0.92);
+      --line: rgba(0, 240, 255, 0.22);
+      --text: #e8eef7;
+      --muted: #9fb0c9;
+      --cyan: #00e5ff;
+      --green: #41f29a;
+      --red: #ff5d5d;
+      --gold: #ffd166;
+      --shield: #5bbcff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background: radial-gradient(circle at top, #11192b 0%, #080b14 45%, #05070d 100%);
+      color: var(--text);
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #app {
+      position: relative;
+      width: min(100vw, 1100px);
+      aspect-ratio: 16 / 9;
+      border: 1px solid var(--line);
+      box-shadow: 0 0 30px rgba(0, 229, 255, 0.08);
+      background: #04060c;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #04060c;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: var(--panel);
+      backdrop-filter: blur(5px);
+      padding: 24px;
+    }
+
+    .screen.active { display: flex; }
+
+    .hud {
+      position: absolute;
+      inset: 0;
+      display: none;
+      pointer-events: none;
+      padding: 18px;
+    }
+
+    .hud.active { display: block; }
+
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      font-size: 14px;
+      font-weight: 700;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+
+    .hud-card {
+      background: rgba(6, 10, 18, 0.72);
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      min-width: 180px;
+    }
+
+    .objective {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: rgba(6, 10, 18, 0.82);
+      border: 1px solid var(--line);
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    h1 {
+      color: var(--cyan);
+      font-size: clamp(34px, 5vw, 56px);
+      letter-spacing: 0.06em;
+      text-shadow: 0 0 18px rgba(0, 229, 255, 0.25);
+      text-align: center;
+    }
+
+    h2 {
+      color: var(--text);
+      font-size: clamp(18px, 2vw, 24px);
+      font-weight: 600;
+      text-align: center;
+    }
+
+    p {
+      color: var(--muted);
+      line-height: 1.5;
+      text-align: center;
+      max-width: 760px;
+    }
+
+    button {
+      pointer-events: auto;
+      border: 1px solid var(--cyan);
+      background: transparent;
+      color: var(--cyan);
+      font: inherit;
+      font-weight: 700;
+      padding: 12px 20px;
+      min-width: 180px;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    button:hover:not(:disabled) {
+      background: rgba(0, 229, 255, 0.1);
+      box-shadow: 0 0 16px rgba(0, 229, 255, 0.14);
+    }
+
+    button:disabled {
+      color: #5b677d;
+      border-color: #394255;
+      cursor: not-allowed;
+    }
+
+    .color-hp { color: var(--red); }
+    .color-ammo { color: var(--gold); }
+    .color-ore { color: var(--cyan); }
+    .color-shield { color: var(--shield); }
+    .color-ok { color: var(--green); }
+
+    .station-layout {
+      width: min(860px, 95%);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 8px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: rgba(9, 15, 28, 0.72);
+      padding: 18px;
+      min-height: 210px;
+    }
+
+    .panel h3 {
+      color: var(--cyan);
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .craft-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding-bottom: 10px;
+    }
+
+    .craft-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .craft-row button {
+      min-width: 110px;
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+
+    #feedback {
+      min-height: 24px;
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    @media (max-width: 780px) {
+      .station-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" width="1280" height="720"></canvas>
+
+    <div id="screen-boot" class="screen active">
+      <h1>ÓRBITA & QUEDA</h1>
+      <h2>Protótipo Web da Vertical Slice</h2>
+      <p>
+        Vamos assumir a versão web como base oficial do projeto. Primeiro provamos o loop principal em HTML5 Canvas:
+        superfície → estação → espaço.
+      </p>
+      <p>
+        <strong>Controles:</strong> WASD para mover, mouse para mirar, clique esquerdo para atirar.
+      </p>
+      <button id="btn-start">Iniciar Loop</button>
+    </div>
+
+    <div id="screen-station" class="screen">
+      <h1>ESTAÇÃO ORBITAL</h1>
+      <p id="station-summary" class="color-ok">Operação processada.</p>
+      <div class="station-layout">
+        <div class="panel stack">
+          <h3>Inventário</h3>
+          <div>Minério raro: <strong id="station-ore" class="color-ore">0</strong></div>
+          <div>Munição perfurante: <strong id="station-pammo" class="color-ammo">0</strong></div>
+          <div>Casco: <strong id="station-hull">100/100</strong></div>
+          <div>Escudo: <strong id="station-shield">0/0</strong></div>
+          <div>Módulo de escudo: <strong id="station-shield-module">Ausente</strong></div>
+        </div>
+        <div class="panel stack">
+          <h3>Engenharia</h3>
+          <div class="craft-row">
+            <span>Escudo Nv.1 (3 minério)</span>
+            <button id="btn-craft-shield">Criar</button>
+          </div>
+          <div class="craft-row">
+            <span>+10 munições perfurantes (1 minério)</span>
+            <button id="btn-craft-ammo">Criar</button>
+          </div>
+          <div class="craft-row">
+            <span>Reparo total</span>
+            <button id="btn-repair">Reparar</button>
+          </div>
+          <div id="feedback"></div>
+        </div>
+      </div>
+      <button id="btn-launch">Desatracar</button>
+    </div>
+
+    <div id="screen-over" class="screen">
+      <h1 id="over-title">LOOP INTERROMPIDO</h1>
+      <p id="over-desc">A operação falhou.</p>
+      <button id="btn-restart">Reiniciar</button>
+    </div>
+
+    <div id="hud-surface" class="hud">
+      <div class="hud-top">
+        <div class="hud-card">
+          <div class="color-hp">HP: <span id="surface-hp">100</span></div>
+          <div class="color-ammo">Munição: <span id="surface-ammo">30</span></div>
+        </div>
+        <div class="hud-card">
+          <div class="color-ore">Minério: <span id="surface-ore">0</span>/3</div>
+        </div>
+      </div>
+      <div class="objective" id="surface-objective">Coletar 3 veios de minério raro.</div>
+    </div>
+
+    <div id="hud-space" class="hud">
+      <div class="hud-top">
+        <div class="hud-card">
+          <div class="color-hp">Casco: <span id="space-hull">100</span></div>
+          <div class="color-shield">Escudo: <span id="space-shield">0</span></div>
+          <div class="color-ammo">Munição: <span id="space-ammo">30</span></div>
+        </div>
+        <div class="hud-card">
+          <div>NAVEGAÇÃO TÁTICA</div>
+          <div id="space-module-status">SEM ESCUDO</div>
+        </div>
+      </div>
+      <div class="objective" id="space-objective">Alcance o ponto de salto e sobreviva ao contato hostil.</div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const WIDTH = canvas.width;
+    const HEIGHT = canvas.height;
+
+    const SceneType = {
+      BOOT: 'BOOT',
+      SURFACE: 'SURFACE',
+      STATION: 'STATION',
+      SPACE: 'SPACE',
+      OVER: 'OVER'
+    };
+
+    const PersistentState = {
+      inventory: {
+        rareOre: 0,
+        piercingAmmo: 0,
+      },
+      ship: {
+        maxHull: 100,
+        currentHull: 100,
+        maxShield: 50,
+        currentShield: 0,
+        hasShieldModule: false,
+        ammo: 30,
+      },
+      totals: {
+        successfulExtractions: 0,
+        failedOperations: 0,
+      }
+    };
+
+    let SurfaceRunState = null;
+    let lastMissionResult = null;
+
+    const input = {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+      fire: false,
+      mouseX: WIDTH * 0.5,
+      mouseY: HEIGHT * 0.5,
+    };
+
+    let currentScene = SceneType.BOOT;
+    let player = null;
+    let entities = [];
+    let particles = [];
+    let extractionZone = null;
+    let jumpPoint = null;
+    let rafId = 0;
+    let lastTime = 0;
+
+    class Vec2 {
+      constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
+      }
+      clone() { return new Vec2(this.x, this.y); }
+      add(v) { this.x += v.x; this.y += v.y; return this; }
+      sub(v) { this.x -= v.x; this.y -= v.y; return this; }
+      scale(n) { this.x *= n; this.y *= n; return this; }
+      length() { return Math.hypot(this.x, this.y); }
+      normalize() {
+        const len = this.length();
+        if (len > 0) {
+          this.x /= len;
+          this.y /= len;
+        }
+        return this;
+      }
+      static distance(a, b) {
+        return Math.hypot(a.x - b.x, a.y - b.y);
+      }
+      static fromAngle(angle, length = 1) {
+        return new Vec2(Math.cos(angle) * length, Math.sin(angle) * length);
+      }
+    }
+
+    class Entity {
+      constructor(x, y, radius, color) {
+        this.pos = new Vec2(x, y);
+        this.vel = new Vec2();
+        this.radius = radius;
+        this.color = color;
+        this.angle = 0;
+        this.dead = false;
+        this.type = 'entity';
+      }
+      update(dt) {
+        this.pos.add(this.vel.clone().scale(dt));
+      }
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.pos.x, this.pos.y);
+        ctx.rotate(this.angle);
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    class PlayerSurface extends Entity {
+      constructor(x, y) {
+        super(x, y, 14, '#ffffff');
+        this.speed = 230;
+        this.fireCooldown = 0;
+        this.type = 'player';
+      }
+      update(dt) {
+        const move = new Vec2(
+          (input.right ? 1 : 0) - (input.left ? 1 : 0),
+          (input.down ? 1 : 0) - (input.up ? 1 : 0)
+        );
+
+        if (move.length() > 0) move.normalize();
+        this.vel.x = move.x * this.speed;
+        this.vel.y = move.y * this.speed;
+        super.update(dt);
+
+        this.pos.x = Math.max(this.radius, Math.min(WIDTH - this.radius, this.pos.x));
+        this.pos.y = Math.max(this.radius, Math.min(HEIGHT - this.radius, this.pos.y));
+
+        this.angle = Math.atan2(input.mouseY - this.pos.y, input.mouseX - this.pos.x);
+
+        if (this.fireCooldown > 0) this.fireCooldown -= dt;
+        if (input.fire && this.fireCooldown <= 0 && SurfaceRunState.currentAmmo > 0) {
+          this.fireCooldown = 0.18;
+          SurfaceRunState.currentAmmo -= 1;
+          spawnBullet(this.pos, this.angle, true, 560, 10);
+          refreshSurfaceHUD();
+        }
+      }
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.pos.x, this.pos.y);
+        ctx.rotate(this.angle);
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.fillStyle = '#8d98ac';
+        ctx.fillRect(0, -3, 20, 6);
+        ctx.restore();
+      }
+    }
+
+    class Drone extends Entity {
+      constructor(x, y) {
+        super(x, y, 12, '#ff5d5d');
+        this.hp = 30;
+        this.speed = 135;
+        this.fireCooldown = Math.random() * 0.8;
+        this.type = 'enemy';
+      }
+      update(dt) {
+        if (!player) return;
+
+        const distance = Vec2.distance(this.pos, player.pos);
+        if (distance < 340) {
+          const dir = player.pos.clone().sub(this.pos).normalize();
+          this.vel.x = dir.x * this.speed;
+          this.vel.y = dir.y * this.speed;
+          this.angle = Math.atan2(dir.y, dir.x);
+
+          if (distance < 220) {
+            this.vel.scale(0.35);
+            this.fireCooldown -= dt;
+            if (this.fireCooldown <= 0) {
+              this.fireCooldown = 1.2;
+              spawnBullet(this.pos, this.angle, false, 420, 10);
+            }
+          }
+        } else {
+          this.vel.scale(0.88);
+        }
+
+        super.update(dt);
+      }
+      takeDamage(amount) {
+        this.hp -= amount;
+        if (this.hp <= 0) this.dead = true;
+      }
+    }
+
+    class OreNode extends Entity {
+      constructor(x, y) {
+        super(x, y, 18, '#00e5ff');
+        this.hp = 20;
+        this.type = 'ore';
+      }
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.pos.x, this.pos.y);
+        ctx.beginPath();
+        ctx.moveTo(0, -this.radius);
+        ctx.lineTo(this.radius * 0.9, 0);
+        ctx.lineTo(0, this.radius);
+        ctx.lineTo(-this.radius * 0.9, 0);
+        ctx.closePath();
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.strokeStyle = '#dffaff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+      }
+      takeDamage(amount) {
+        this.hp -= amount;
+        if (this.hp <= 0) {
+          this.dead = true;
+          SurfaceRunState.oreCollected += 1;
+          refreshSurfaceHUD();
+          if (SurfaceRunState.oreCollected >= 3 && !SurfaceRunState.extractionReady) {
+            SurfaceRunState.extractionReady = true;
+            extractionZone = { pos: new Vec2(WIDTH / 2, HEIGHT - 84), radius: 50 };
+            document.getElementById('surface-objective').textContent = 'Minério suficiente. Retorne para a extração.';
+          }
+        }
+      }
+    }
+
+    class Bullet extends Entity {
+      constructor(x, y, angle, friendly, speed, damage) {
+        super(x, y, 4, friendly ? '#00e5ff' : '#ff5d5d');
+        this.angle = angle;
+        this.vel = Vec2.fromAngle(angle, speed);
+        this.life = 1.8;
+        this.friendly = friendly;
+        this.damage = damage;
+        this.type = 'bullet';
+      }
+      update(dt) {
+        super.update(dt);
+        this.life -= dt;
+        if (this.life <= 0) this.dead = true;
+      }
+    }
+
+    class PlayerShip extends Entity {
+      constructor(x, y) {
+        super(x, y, 16, '#ffffff');
+        this.type = 'playerShip';
+        this.angle = -Math.PI / 2;
+        this.turnSpeed = 3.1;
+        this.thrust = 520;
+        this.drag = 0.988;
+        this.fireCooldown = 0;
+      }
+      update(dt) {
+        if (input.left) this.angle -= this.turnSpeed * dt;
+        if (input.right) this.angle += this.turnSpeed * dt;
+
+        if (input.up) {
+          const thrustVec = Vec2.fromAngle(this.angle, this.thrust * dt);
+          this.vel.add(thrustVec);
+          if (Math.random() < 0.45) particles.push(new Particle(this.pos.x, this.pos.y, '#ff9b3d'));
+        }
+
+        this.vel.scale(this.drag);
+        super.update(dt);
+
+        this.pos.x = Math.max(this.radius, Math.min(WIDTH - this.radius, this.pos.x));
+        this.pos.y = Math.max(this.radius, Math.min(HEIGHT - this.radius, this.pos.y));
+
+        if (this.fireCooldown > 0) this.fireCooldown -= dt;
+        if (input.fire && this.fireCooldown <= 0 && PersistentState.ship.ammo > 0) {
+          this.fireCooldown = 0.25;
+          PersistentState.ship.ammo -= 1;
+          spawnBullet(this.pos.clone().add(Vec2.fromAngle(this.angle, 22)), this.angle, true, 680, 10);
+          refreshSpaceHUD();
+        }
+      }
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.pos.x, this.pos.y);
+        ctx.rotate(this.angle);
+
+        if (PersistentState.ship.currentShield > 0) {
+          ctx.beginPath();
+          ctx.arc(0, 0, this.radius + 7, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(91, 188, 255, 0.65)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(this.radius + 2, 0);
+        ctx.lineTo(-this.radius, -this.radius * 0.9);
+        ctx.lineTo(-this.radius * 0.35, 0);
+        ctx.lineTo(-this.radius, this.radius * 0.9);
+        ctx.closePath();
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#cad7ef';
+        ctx.stroke();
+        ctx.restore();
+      }
+      takeDamage(amount) {
+        if (PersistentState.ship.currentShield > 0) {
+          PersistentState.ship.currentShield -= amount;
+          if (PersistentState.ship.currentShield < 0) {
+            PersistentState.ship.currentHull += PersistentState.ship.currentShield;
+            PersistentState.ship.currentShield = 0;
+          }
+        } else {
+          PersistentState.ship.currentHull -= amount;
+        }
+
+        refreshSpaceHUD();
+        if (PersistentState.ship.currentHull <= 0) {
+          PersistentState.totals.failedOperations += 1;
+          openOver('NAVE DESTRUÍDA', 'Você foi abatido antes de alcançar o ponto de salto.');
+        }
+      }
+    }
+
+    class PirateShip extends Entity {
+      constructor(x, y) {
+        super(x, y, 18, '#ff5d5d');
+        this.hp = 60;
+        this.type = 'enemyShip';
+        this.speed = 170;
+        this.fireCooldown = 0.9;
+      }
+      update(dt) {
+        if (!player) return;
+        const dir = player.pos.clone().sub(this.pos);
+        const distance = dir.length();
+        dir.normalize();
+        this.angle = Math.atan2(dir.y, dir.x);
+
+        if (distance > 180) {
+          this.vel.x = dir.x * this.speed;
+          this.vel.y = dir.y * this.speed;
+        } else {
+          this.vel.scale(0.9);
+        }
+
+        this.fireCooldown -= dt;
+        if (distance < 420 && this.fireCooldown <= 0) {
+          this.fireCooldown = 1.15;
+          spawnBullet(this.pos.clone().add(dir.clone().scale(24)), this.angle, false, 520, 10);
+        }
+
+        super.update(dt);
+      }
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.pos.x, this.pos.y);
+        ctx.rotate(this.angle);
+        ctx.beginPath();
+        ctx.moveTo(this.radius, 0);
+        ctx.lineTo(-this.radius, -this.radius);
+        ctx.lineTo(-this.radius * 0.2, 0);
+        ctx.lineTo(-this.radius, this.radius);
+        ctx.closePath();
+        ctx.fillStyle = this.color;
+        ctx.fill();
+        ctx.restore();
+      }
+      takeDamage(amount) {
+        this.hp -= amount;
+        if (this.hp <= 0) this.dead = true;
+      }
+    }
+
+    class Particle {
+      constructor(x, y, color) {
+        this.pos = new Vec2(x, y);
+        this.vel = new Vec2((Math.random() - 0.5) * 90, (Math.random() - 0.5) * 90);
+        this.life = 0.45 + Math.random() * 0.35;
+        this.color = color;
+      }
+      update(dt) {
+        this.pos.add(this.vel.clone().scale(dt));
+        this.life -= dt;
+      }
+      draw(ctx) {
+        ctx.globalAlpha = Math.max(0, this.life * 2);
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.pos.x, this.pos.y, 3, 3);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    function spawnBullet(origin, angle, friendly, speed, damage) {
+      entities.push(new Bullet(origin.x, origin.y, angle, friendly, speed, damage));
+    }
+
+    function resetInput() {
+      input.up = false;
+      input.down = false;
+      input.left = false;
+      input.right = false;
+      input.fire = false;
+    }
+
+    function resetPersistentState() {
+      PersistentState.inventory.rareOre = 0;
+      PersistentState.inventory.piercingAmmo = 0;
+      PersistentState.ship.maxHull = 100;
+      PersistentState.ship.currentHull = 100;
+      PersistentState.ship.maxShield = 50;
+      PersistentState.ship.currentShield = 0;
+      PersistentState.ship.hasShieldModule = false;
+      PersistentState.ship.ammo = 30;
+      PersistentState.totals.successfulExtractions = 0;
+      PersistentState.totals.failedOperations = 0;
+      lastMissionResult = null;
+    }
+
+    function createSurfaceRun() {
+      SurfaceRunState = {
+        maxHealth: 100,
+        currentHealth: 100,
+        currentAmmo: PersistentState.ship.ammo,
+        oreCollected: 0,
+        damageTaken: 0,
+        extractionReady: false,
+      };
+    }
+
+    function openScreen(id) {
+      document.querySelectorAll('.screen').forEach(node => node.classList.remove('active'));
+      if (id) document.getElementById(id).classList.add('active');
+      document.querySelectorAll('.hud').forEach(node => node.classList.remove('active'));
+      if (currentScene === SceneType.SURFACE) document.getElementById('hud-surface').classList.add('active');
+      if (currentScene === SceneType.SPACE) document.getElementById('hud-space').classList.add('active');
+    }
+
+    function openBoot() {
+      currentScene = SceneType.BOOT;
+      cancelAnimationFrame(rafId);
+      openScreen('screen-boot');
+    }
+
+    function initSurface() {
+      currentScene = SceneType.SURFACE;
+      createSurfaceRun();
+      entities = [];
+      particles = [];
+      extractionZone = null;
+      jumpPoint = null;
+
+      player = new PlayerSurface(WIDTH / 2, HEIGHT - 90);
+      entities.push(player);
+      entities.push(new OreNode(180, 150));
+      entities.push(new OreNode(WIDTH / 2, 135));
+      entities.push(new OreNode(WIDTH - 180, 175));
+      entities.push(new Drone(260, 260));
+      entities.push(new Drone(WIDTH - 260, 320));
+
+      document.getElementById('surface-objective').textContent = 'Coletar 3 veios de minério raro.';
+      refreshSurfaceHUD();
+      openScreen(null);
+      startLoop();
+    }
+
+    function finishSurfaceSuccess() {
+      const ammoSpent = Math.max(0, PersistentState.ship.ammo - SurfaceRunState.currentAmmo);
+      lastMissionResult = {
+        isSuccess: true,
+        oreExtracted: SurfaceRunState.oreCollected,
+        damageTaken: SurfaceRunState.damageTaken,
+        ammoSpent,
+      };
+      PersistentState.ship.ammo = SurfaceRunState.currentAmmo;
+      PersistentState.inventory.rareOre += lastMissionResult.oreExtracted;
+      PersistentState.totals.successfulExtractions += 1;
+      openStation('Operação concluída. Carga consolidada na estação.');
+    }
+
+    function finishSurfaceFailure(reason) {
+      lastMissionResult = {
+        isSuccess: false,
+        oreExtracted: 0,
+        damageTaken: SurfaceRunState.damageTaken,
+        ammoSpent: Math.max(0, PersistentState.ship.ammo - SurfaceRunState.currentAmmo),
+      };
+      PersistentState.totals.failedOperations += 1;
+      openOver('OPERAÇÃO FALHOU', reason);
+    }
+
+    function openStation(summary) {
+      currentScene = SceneType.STATION;
+      cancelAnimationFrame(rafId);
+      document.getElementById('station-summary').textContent = summary;
+      refreshStationUI();
+      openScreen('screen-station');
+    }
+
+    function craftShield() {
+      if (PersistentState.ship.hasShieldModule) {
+        setStationFeedback('O módulo de escudo já está equipado.');
+        return;
+      }
+      if (PersistentState.inventory.rareOre < 3) {
+        setStationFeedback('Minério insuficiente para fabricar o escudo.');
+        return;
+      }
+      PersistentState.inventory.rareOre -= 3;
+      PersistentState.ship.hasShieldModule = true;
+      PersistentState.ship.currentShield = PersistentState.ship.maxShield;
+      refreshStationUI();
+      setStationFeedback('Módulo de escudo fabricado e ativado.');
+    }
+
+    function craftAmmo() {
+      if (PersistentState.inventory.rareOre < 1) {
+        setStationFeedback('Minério insuficiente para fabricar munição perfurante.');
+        return;
+      }
+      PersistentState.inventory.rareOre -= 1;
+      PersistentState.inventory.piercingAmmo += 10;
+      PersistentState.ship.ammo += 10;
+      refreshStationUI();
+      setStationFeedback('+10 munições adicionadas ao carregador orbital.');
+    }
+
+    function repairShip() {
+      PersistentState.ship.currentHull = PersistentState.ship.maxHull;
+      if (PersistentState.ship.hasShieldModule) {
+        PersistentState.ship.currentShield = PersistentState.ship.maxShield;
+      }
+      refreshStationUI();
+      setStationFeedback('Nave reparada.');
+    }
+
+    function refreshStationUI() {
+      document.getElementById('station-ore').textContent = PersistentState.inventory.rareOre;
+      document.getElementById('station-pammo').textContent = PersistentState.inventory.piercingAmmo;
+      document.getElementById('station-hull').textContent = `${Math.ceil(PersistentState.ship.currentHull)}/${PersistentState.ship.maxHull}`;
+      document.getElementById('station-shield').textContent = `${Math.ceil(PersistentState.ship.currentShield)}/${PersistentState.ship.maxShield}`;
+      document.getElementById('station-shield-module').textContent = PersistentState.ship.hasShieldModule ? 'Equipado' : 'Ausente';
+      document.getElementById('btn-craft-shield').disabled = PersistentState.inventory.rareOre < 3 || PersistentState.ship.hasShieldModule;
+      document.getElementById('btn-craft-ammo').disabled = PersistentState.inventory.rareOre < 1;
+    }
+
+    function setStationFeedback(text) {
+      document.getElementById('feedback').textContent = text;
+    }
+
+    function initSpace() {
+      currentScene = SceneType.SPACE;
+      entities = [];
+      particles = [];
+      extractionZone = null;
+      jumpPoint = { pos: new Vec2(WIDTH - 120, HEIGHT / 2), radius: 64 };
+
+      if (PersistentState.ship.hasShieldModule && PersistentState.ship.currentShield <= 0) {
+        PersistentState.ship.currentShield = PersistentState.ship.maxShield;
+      }
+
+      player = new PlayerShip(130, HEIGHT / 2);
+      entities.push(player);
+      entities.push(new PirateShip(WIDTH - 220, HEIGHT / 2 - 120));
+      refreshSpaceHUD();
+      openScreen(null);
+      startLoop();
+    }
+
+    function finishSpaceSuccess() {
+      initSurface();
+    }
+
+    function openOver(title, description) {
+      currentScene = SceneType.OVER;
+      cancelAnimationFrame(rafId);
+      document.getElementById('over-title').textContent = title;
+      document.getElementById('over-desc').textContent = description;
+      openScreen('screen-over');
+    }
+
+    function refreshSurfaceHUD() {
+      document.getElementById('surface-hp').textContent = Math.max(0, Math.ceil(SurfaceRunState.currentHealth));
+      document.getElementById('surface-ammo').textContent = SurfaceRunState.currentAmmo;
+      document.getElementById('surface-ore').textContent = SurfaceRunState.oreCollected;
+    }
+
+    function refreshSpaceHUD() {
+      document.getElementById('space-hull').textContent = Math.max(0, Math.ceil(PersistentState.ship.currentHull));
+      document.getElementById('space-shield').textContent = Math.max(0, Math.ceil(PersistentState.ship.currentShield));
+      document.getElementById('space-ammo').textContent = PersistentState.ship.ammo;
+      document.getElementById('space-module-status').textContent = PersistentState.ship.hasShieldModule ? 'ESCUDO ATIVO' : 'SEM ESCUDO';
+    }
+
+    function startLoop() {
+      lastTime = performance.now();
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function loop(time) {
+      if (currentScene !== SceneType.SURFACE && currentScene !== SceneType.SPACE) return;
+
+      const dt = Math.min(0.033, (time - lastTime) / 1000);
+      lastTime = time;
+
+      update(dt);
+      draw();
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function update(dt) {
+      entities.forEach(entity => entity.update(dt));
+      particles.forEach(p => p.update(dt));
+      particles = particles.filter(p => p.life > 0);
+
+      handleCollisions();
+      entities = entities.filter(entity => !entity.dead);
+
+      if (currentScene === SceneType.SURFACE && SurfaceRunState.extractionReady && extractionZone) {
+        if (Vec2.distance(player.pos, extractionZone.pos) <= extractionZone.radius) {
+          finishSurfaceSuccess();
+          return;
+        }
+      }
+
+      if (currentScene === SceneType.SPACE && jumpPoint) {
+        if (Vec2.distance(player.pos, jumpPoint.pos) <= jumpPoint.radius) {
+          finishSpaceSuccess();
+          return;
+        }
+      }
+    }
+
+    function handleCollisions() {
+      for (let i = 0; i < entities.length; i++) {
+        for (let j = 0; j < entities.length; j++) {
+          if (i === j) continue;
+          const a = entities[i];
+          const b = entities[j];
+
+          if (a.type === 'bullet' && a.friendly && (b.type === 'enemy' || b.type === 'ore' || b.type === 'enemyShip')) {
+            if (Vec2.distance(a.pos, b.pos) < b.radius + a.radius) {
+              if (typeof b.takeDamage === 'function') b.takeDamage(a.damage);
+              burst(a.pos.x, a.pos.y, b.color);
+              a.dead = true;
+            }
+          }
+
+          if (a.type === 'bullet' && !a.friendly && (b.type === 'player' || b.type === 'playerShip')) {
+            if (Vec2.distance(a.pos, b.pos) < b.radius + a.radius) {
+              if (currentScene === SceneType.SURFACE) {
+                SurfaceRunState.currentHealth -= a.damage;
+                SurfaceRunState.damageTaken += a.damage;
+                refreshSurfaceHUD();
+                if (SurfaceRunState.currentHealth <= 0) {
+                  finishSurfaceFailure('O operador foi abatido antes da extração.');
+                  return;
+                }
+              } else if (currentScene === SceneType.SPACE) {
+                player.takeDamage(a.damage);
+              }
+              burst(a.pos.x, a.pos.y, '#ffffff');
+              a.dead = true;
+            }
+          }
+        }
+      }
+    }
+
+    function burst(x, y, color) {
+      for (let i = 0; i < 6; i++) particles.push(new Particle(x, y, color));
+    }
+
+    function draw() {
+      ctx.fillStyle = '#04060c';
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      drawGrid();
+
+      if (currentScene === SceneType.SURFACE) drawSurfaceDecor();
+      if (currentScene === SceneType.SPACE) drawSpaceDecor();
+
+      entities.forEach(entity => entity.draw(ctx));
+      particles.forEach(p => p.draw(ctx));
+    }
+
+    function drawGrid() {
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.06)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= WIDTH; x += 64) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, HEIGHT);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= HEIGHT; y += 64) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(WIDTH, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawSurfaceDecor() {
+      if (!extractionZone) return;
+      ctx.beginPath();
+      ctx.arc(extractionZone.pos.x, extractionZone.pos.y, extractionZone.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(65, 242, 154, 0.16)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(65, 242, 154, 0.85)';
+      ctx.stroke();
+      ctx.fillStyle = '#41f29a';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 16px Inter, Arial';
+      ctx.fillText('EXTRAÇÃO', extractionZone.pos.x, extractionZone.pos.y + 5);
+    }
+
+    function drawSpaceDecor() {
+      if (!jumpPoint) return;
+      ctx.beginPath();
+      ctx.arc(jumpPoint.pos.x, jumpPoint.pos.y, jumpPoint.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(91, 188, 255, 0.14)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(91, 188, 255, 0.85)';
+      ctx.stroke();
+      ctx.fillStyle = '#5bbcff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 16px Inter, Arial';
+      ctx.fillText('SALTO', jumpPoint.pos.x, jumpPoint.pos.y + 5);
+    }
+
+    function handleKeyState(key, pressed) {
+      if (key === 'w' || key === 'arrowup') input.up = pressed;
+      if (key === 's' || key === 'arrowdown') input.down = pressed;
+      if (key === 'a' || key === 'arrowleft') input.left = pressed;
+      if (key === 'd' || key === 'arrowright') input.right = pressed;
+    }
+
+    window.addEventListener('keydown', event => handleKeyState(event.key.toLowerCase(), true));
+    window.addEventListener('keyup', event => handleKeyState(event.key.toLowerCase(), false));
+
+    canvas.addEventListener('mousemove', event => {
+      const rect = canvas.getBoundingClientRect();
+      input.mouseX = (event.clientX - rect.left) * (canvas.width / rect.width);
+      input.mouseY = (event.clientY - rect.top) * (canvas.height / rect.height);
+    });
+    canvas.addEventListener('mousedown', () => { input.fire = true; });
+    window.addEventListener('mouseup', () => { input.fire = false; });
+
+    document.getElementById('btn-start').addEventListener('click', () => {
+      resetPersistentState();
+      resetInput();
+      initSurface();
+    });
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      resetPersistentState();
+      resetInput();
+      openBoot();
+    });
+    document.getElementById('btn-craft-shield').addEventListener('click', craftShield);
+    document.getElementById('btn-craft-ammo').addEventListener('click', craftAmmo);
+    document.getElementById('btn-repair').addEventListener('click', repairShip);
+    document.getElementById('btn-launch').addEventListener('click', () => {
+      resetInput();
+      initSpace();
+    });
+
+    openBoot();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Órbita & Queda - Web Alpha</title>
+    <style>
+        :root {
+            --bg-color: #050508;
+            --accent-cyan: #00f0ff;
+            --accent-red: #ff3c3c;
+            --accent-green: #3cff8c;
+            --accent-gold: #ffd700;
+            --text-main: #e0e0e0;
+            --panel-bg: rgba(10, 10, 20, 0.95);
+            --border-color: rgba(0, 240, 255, 0.4);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+        body {
+            background-color: #000;
+            color: var(--text-main);
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 1024px;
+            aspect-ratio: 4/3;
+            border: 2px solid var(--border-color);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.15);
+            background-color: var(--bg-color);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Overlays */
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: none;
+            flex-direction: column;
+            padding: 30px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .screen.active { display: flex; }
+        
+        #screen-boot, #screen-station, #screen-game-over {
+            background-color: var(--panel-bg);
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            backdrop-filter: blur(8px);
+        }
+
+        h1 { color: var(--accent-cyan); font-size: 3.5rem; margin-bottom: 10px; text-shadow: 0 0 15px var(--accent-cyan); text-align: center; text-transform: uppercase; letter-spacing: 5px;}
+        h2 { color: var(--text-main); font-size: 1.5rem; margin-bottom: 25px; letter-spacing: 2px; }
+        p { margin-bottom: 15px; line-height: 1.6; text-align: center; max-width: 700px; font-size: 1.1rem;}
+
+        button {
+            background: rgba(0, 240, 255, 0.05);
+            color: var(--accent-cyan);
+            border: 1px solid var(--accent-cyan);
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 10px;
+            box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1);
+        }
+
+        button:hover:not(:disabled) {
+            background: var(--accent-cyan);
+            color: var(--bg-color);
+            box-shadow: 0 0 20px var(--accent-cyan);
+            transform: scale(1.05);
+        }
+
+        button:disabled {
+            border-color: #444;
+            color: #666;
+            background: transparent;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* HUDs */
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+            padding: 15px;
+            margin: -30px -30px 0 -30px;
+        }
+
+        .hud-stat { margin-bottom: 8px; display: flex; align-items: center; gap: 10px;}
+        .stat-bar-bg { width: 150px; height: 12px; background: #222; border: 1px solid #444; overflow: hidden;}
+        .stat-bar-fill { height: 100%; transition: width 0.2s; }
+        
+        .color-hp { color: var(--accent-red); }
+        .bg-hp { background-color: var(--accent-red); }
+        .color-ammo { color: var(--accent-gold); }
+        .color-ore { color: var(--accent-cyan); }
+        .color-shield { color: #0088ff; }
+        .bg-shield { background-color: #0088ff; }
+
+        .objective-tracker {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            font-size: 1.2rem;
+            color: var(--text-main);
+            background: rgba(0, 0, 15, 0.85);
+            padding: 12px 25px;
+            border: 1px solid var(--accent-cyan);
+            border-left: 4px solid var(--accent-cyan);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        /* Station Specific */
+        .station-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 30px;
+            width: 90%;
+            max-width: 800px;
+            margin-top: 20px;
+        }
+
+        .station-panel {
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            background: rgba(0, 240, 255, 0.03);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .station-panel h3 { color: var(--accent-cyan); margin-bottom: 20px; border-bottom: 1px solid rgba(0,240,255,0.3); padding-bottom: 10px; font-size: 1.4rem;}
+        
+        .craft-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 1rem; border-bottom: 1px dashed #333; padding-bottom: 10px;}
+        .craft-row span { color: #ccc; }
+        .craft-row strong { color: var(--accent-cyan); }
+        .craft-row button { padding: 8px 15px; font-size: 0.9rem; margin: 0; min-width: 100px;}
+        
+        .upgrade-pip { display: inline-block; width: 10px; height: 10px; background: #333; margin-right: 4px; border: 1px solid #555;}
+        .upgrade-pip.active { background: var(--accent-cyan); border-color: #fff; box-shadow: 0 0 5px var(--accent-cyan);}
+
+        #screen-flash {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            background: rgba(255, 60, 60, 0.3);
+            display: none; z-index: 5; pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="1024" height="768"></canvas>
+    <div id="screen-flash"></div>
+    
+    <div id="ui-layer">
+        <!-- BOOT SCREEN -->
+        <div id="screen-boot" class="screen active">
+            <h1>ÓRBITA & QUEDA</h1>
+            <h2>Projeto Alpha v0.2</h2>
+            <p>A humanidade fragmentou. Sobrou apenas a extração e a guerra. Desça em mundos hostis, colete minérios raros e use-os para melhorar sua nave antes que os piratas o destruam no vácuo.</p>
+            <p style="color: var(--accent-gold); font-size:0.9rem;">[WASD] Mover | [MOUSE] Mirar | [CLIQUE] Atirar/Minerar</p>
+            <button onclick="startGame()">Iniciar Ciclo</button>
+        </div>
+
+        <!-- SURFACE HUD -->
+        <div id="screen-surface-hud" class="screen">
+            <div class="hud-header">
+                <div>
+                    <div class="hud-stat color-hp">
+                        <span style="width: 40px;">HP</span>
+                        <div class="stat-bar-bg"><div id="surf-hp-bar" class="stat-bar-fill bg-hp"></div></div>
+                    </div>
+                    <div class="hud-stat color-ammo">MUN: <span id="surf-ammo">30</span></div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="hud-stat color-ore">MINÉRIO RARO: <span id="surf-ore" style="font-size: 1.5em; margin-left:10px;">0</span>/4</div>
+                </div>
+            </div>
+            <div class="objective-tracker" id="surf-objective">Encontre e destrua os Veios de Minério</div>
+        </div>
+
+        <!-- STATION SCREEN -->
+        <div id="screen-station" class="screen">
+            <h1>ESTAÇÃO HUB-7</h1>
+            <p id="station-result-text" style="color: var(--accent-green); font-size: 1.2rem; margin-bottom: 5px;"></p>
+            <p id="station-loop-text" style="color: #888; font-size: 0.9rem; margin-bottom: 20px;">Ciclos Completados: 0</p>
+            
+            <div class="station-grid">
+                <div class="station-panel">
+                    <h3>Cofre & Nave</h3>
+                    <p style="font-size:1.2rem; margin-bottom: 20px;">Saldo: <strong class="color-ore" id="stat-ore">0</strong> Minérios</p>
+                    
+                    <p style="color:#aaa; margin-bottom:5px;">Módulos Instalados:</p>
+                    <div style="margin-bottom:10px; font-size: 0.9rem;">
+                        <span id="stat-shield-status">Escudo: Desativado</span><br>
+                        Motor: <span id="stat-engine-pips"></span><br>
+                        Arma: <span id="stat-weapon-pips"></span>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #333;">
+                        <p class="color-hp" style="margin-bottom: 10px;">Reparo do Casco (Custo: 1 Minério)</p>
+                        <button id="btn-repair" onclick="repairShip()" style="width:100%; font-size:0.9rem;">Reparar 25%</button>
+                    </div>
+                </div>
+                
+                <div class="station-panel">
+                    <h3>Mesa de Engenharia</h3>
+                    <div class="craft-row">
+                        <div>
+                            <strong>Gerador de Escudo</strong><br>
+                            <span>Absorve dano no espaço (50 HP)</span>
+                        </div>
+                        <button id="btn-craft-shield" onclick="craftShield()">3 Min</button>
+                    </div>
+                    <div class="craft-row">
+                        <div>
+                            <strong>Melhoria de Motor</strong><br>
+                            <span>Aumenta velocidade e inércia</span>
+                        </div>
+                        <button id="btn-craft-engine" onclick="craftEngine()">4 Min</button>
+                    </div>
+                    <div class="craft-row">
+                        <div>
+                            <strong>Melhoria de Armas</strong><br>
+                            <span>Tiro duplo e mais rápido</span>
+                        </div>
+                        <button id="btn-craft-weapon" onclick="craftWeapon()">5 Min</button>
+                    </div>
+                    <div class="craft-row">
+                        <div>
+                            <strong>Munição Terrestre</strong><br>
+                            <span>+15 Cartuchos Perfurantes</span>
+                        </div>
+                        <button id="btn-craft-ammo" onclick="craftAmmo()">1 Min</button>
+                    </div>
+                </div>
+            </div>
+            <button onclick="launchToSpace()" style="margin-top: 20px; padding: 20px 50px; font-size: 1.5rem;">Desatracar (Espaço Tático)</button>
+        </div>
+
+        <!-- SPACE HUD -->
+        <div id="screen-space-hud" class="screen">
+            <div class="hud-header">
+                <div>
+                    <div class="hud-stat color-hp">
+                        <span style="width: 50px;">CASCO</span>
+                        <div class="stat-bar-bg"><div id="space-hull-bar" class="stat-bar-fill bg-hp"></div></div>
+                    </div>
+                    <div class="hud-stat color-shield" id="space-shield-container" style="display:none;">
+                        <span style="width: 50px;">ESCUDO</span>
+                        <div class="stat-bar-bg" style="border-color:#0088ff;"><div id="space-shield-bar" class="stat-bar-fill bg-shield"></div></div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="hud-stat" style="color:var(--accent-cyan); font-size:1.5rem; letter-spacing: 2px;">SETOR ORBITAL</div>
+                    <div style="color:#aaa; font-size:0.9rem;">Ameaça: <span id="space-threat" class="color-hp">Alta</span></div>
+                </div>
+            </div>
+            <div class="objective-tracker" id="space-objective">Sobreviva e alcance o Ponto de Salto</div>
+        </div>
+
+        <!-- GAME OVER / RESTART -->
+        <div id="screen-game-over" class="screen">
+            <h1 id="go-title" class="color-hp">SINAL VITAL PERDIDO</h1>
+            <p id="go-desc" style="font-size:1.5rem;">A nave foi convertida em poeira estelar.</p>
+            <p id="go-stats" style="color:var(--accent-gold); margin-bottom: 30px;"></p>
+            <button onclick="resetGame()">Acionar Novo Clone (Reiniciar)</button>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * ARQUITETURA DE DADOS
+ */
+const PersistentState = {
+    inventory: { rareOre: 0 },
+    ship: { 
+        maxHull: 100, hull: 100, 
+        maxShield: 50, shield: 0, hasShield: false, 
+        ammo: 40,
+        upgrades: { engineLevel: 0, weaponLevel: 0 }
+    },
+    stats: { loopsCompleted: 0, totalOreExtracted: 0 }
+};
+
+let RunState = {
+    hp: 100, maxHp: 100, ammo: 40, ore: 0, targetOre: 4, isExtractionReady: false
+};
+
+/**
+ * ENGINE CORE & CÂMERA
+ */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+// Define logical resolution
+const W = canvas.width;
+const H = canvas.height;
+const WORLD_W = 1600;
+const WORLD_H = 1600;
+
+const camera = { x: 0, y: 0, shakeTime: 0, shakeMagnitude: 0 };
+
+// Input
+const keys = { w:false, a:false, s:false, d:false };
+const mouse = { x: W/2, y: H/2, worldX: 0, worldY: 0, down: false, clicked: false };
+
+window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true; });
+window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; });
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    // Scale mouse coordinates to canvas logical size
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    mouse.x = (e.clientX - rect.left) * scaleX;
+    mouse.y = (e.clientY - rect.top) * scaleY;
+});
+canvas.addEventListener('mousedown', e => { mouse.down = true; mouse.clicked = true; });
+canvas.addEventListener('mouseup', e => { mouse.down = false; });
+
+// Game Loop Variables
+let lastTime = 0;
+let currentScene = 'BOOT';
+let animationFrameId;
+
+// Entities
+let player;
+let entities = [];
+let obstacles = []; // Physical barriers
+let particles = [];
+let extractionZone = null;
+let jumpPoint = null;
+
+class Vec2 {
+    constructor(x, y) { this.x = x; this.y = y; }
+    add(v) { this.x += v.x; this.y += v.y; return this; }
+    sub(v) { this.x -= v.x; this.y -= v.y; return this; }
+    mult(n) { this.x *= n; this.y *= n; return this; }
+    mag() { return Math.sqrt(this.x*this.x + this.y*this.y); }
+    normalize() { let m = this.mag(); if(m!==0) { this.x/=m; this.y/=m; } return this; }
+    static dist(v1, v2) { return Math.sqrt((v1.x-v2.x)**2 + (v1.y-v2.y)**2); }
+}
+
+function screenShake(magnitude, time) {
+    camera.shakeMagnitude = magnitude;
+    camera.shakeTime = time;
+    const flash = document.getElementById('screen-flash');
+    flash.style.display = 'block';
+    setTimeout(() => flash.style.display = 'none', 50);
+}
+
+/**
+ * CLASSES BASE E COLISÃO
+ */
+class Entity {
+    constructor(x, y, radius, color) {
+        this.pos = new Vec2(x, y);
+        this.vel = new Vec2(0, 0);
+        this.radius = radius;
+        this.color = color;
+        this.angle = 0;
+        this.hp = 100;
+        this.dead = false;
+        this.type = 'entity';
+    }
+    update(dt) { 
+        this.pos.add(new Vec2(this.vel.x * dt, this.vel.y * dt)); 
+        this.resolveObstacles();
+        // Constrain to world bounds
+        this.pos.x = Math.max(this.radius, Math.min(WORLD_W - this.radius, this.pos.x));
+        this.pos.y = Math.max(this.radius, Math.min(WORLD_H - this.radius, this.pos.y));
+    }
+    resolveObstacles() {
+        if(this.type === 'bullet') return; // Bullets handled in main loop
+        for(let obs of obstacles) {
+            let dist = Vec2.dist(this.pos, obs.pos);
+            let minDist = this.radius + obs.radius;
+            if(dist < minDist) {
+                let overlap = minDist - dist;
+                let dir = new Vec2(this.pos.x - obs.pos.x, this.pos.y - obs.pos.y).normalize();
+                this.pos.add(new Vec2(dir.x * overlap, dir.y * overlap));
+                if(this.type === 'enemy' && currentScene === 'SPACE') {
+                    // bounce enemies in space slightly
+                    this.vel.x += dir.x * 20;
+                    this.vel.y += dir.y * 20;
+                }
+            }
+        }
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y); ctx.rotate(this.angle);
+        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.stroke();
+        ctx.restore();
+    }
+    takeDamage(amt) {
+        this.hp -= amt;
+        if(this.hp <= 0) this.dead = true;
+    }
+}
+
+class Obstacle extends Entity {
+    constructor(x,y,r, style='crater') {
+        super(x,y,r,'#1a1a24');
+        this.type = 'obstacle';
+        this.style = style; // 'crater' or 'asteroid'
+    }
+    update(dt) { /* Static */ }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y);
+        ctx.beginPath();
+        if(this.style === 'asteroid') {
+            // Irregular shape
+            let points = 8;
+            for(let i=0; i<points; i++) {
+                let a = (i/points) * Math.PI*2;
+                let r = this.radius * (0.8 + Math.random()*0.2); // slight jaggedness is hard in draw without caching, let's keep it simple
+                let px = Math.cos(a) * this.radius * (i%2===0?1:0.8);
+                let py = Math.sin(a) * this.radius * (i%2===0?1:0.8);
+                if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+            }
+            ctx.closePath();
+            ctx.fillStyle = '#222'; ctx.fill();
+            ctx.strokeStyle = '#444'; ctx.lineWidth = 2; ctx.stroke();
+        } else {
+            // Crater
+            ctx.arc(0,0,this.radius, 0, Math.PI*2);
+            ctx.fillStyle = '#111'; ctx.fill();
+            ctx.strokeStyle = '#333'; ctx.lineWidth = 3; ctx.stroke();
+            ctx.beginPath(); ctx.arc(-this.radius*0.2, -this.radius*0.2, this.radius*0.4, 0, Math.PI*2);
+            ctx.fillStyle = '#0a0a0a'; ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+
+// === SUPERFÍCIE ===
+class PlayerSurface extends Entity {
+    constructor(x,y) {
+        super(x, y, 14, '#ffffff');
+        this.speed = 180 + (PersistentState.ship.upgrades.engineLevel * 20); // boots upgrade
+        this.fireCooldown = 0;
+    }
+    update(dt) {
+        let dir = new Vec2(0,0);
+        if(keys.w) dir.y -= 1;
+        if(keys.s) dir.y += 1;
+        if(keys.a) dir.x -= 1;
+        if(keys.d) dir.x += 1;
+        if(dir.mag() > 0) dir.normalize();
+        
+        this.vel.x = dir.x * this.speed;
+        this.vel.y = dir.y * this.speed;
+        super.update(dt);
+
+        this.angle = Math.atan2(mouse.worldY - this.pos.y, mouse.worldX - this.pos.x);
+
+        if(this.fireCooldown > 0) this.fireCooldown -= dt;
+        if(mouse.down && this.fireCooldown <= 0 && RunState.ammo > 0) {
+            RunState.ammo--;
+            let baseRate = 0.2;
+            this.fireCooldown = baseRate - (PersistentState.ship.upgrades.weaponLevel * 0.03);
+            
+            let pDir = new Vec2(Math.cos(this.angle), Math.sin(this.angle));
+            entities.push(new Bullet(this.pos.x + pDir.x*15, this.pos.y + pDir.y*15, pDir, true));
+            updateSurfaceHUD();
+            
+            // Recoil effect
+            this.pos.x -= pDir.x * 2; this.pos.y -= pDir.y * 2;
+        }
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y); ctx.rotate(this.angle);
+        // Body (Hexagon)
+        ctx.beginPath();
+        for(let i=0; i<6; i++) {
+            let a = (i/6) * Math.PI*2;
+            ctx.lineTo(Math.cos(a)*this.radius, Math.sin(a)*this.radius);
+        }
+        ctx.closePath();
+        ctx.fillStyle = '#ddd'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth=2; ctx.stroke();
+        
+        // Weapon
+        ctx.fillStyle = '#555'; ctx.fillRect(0, -4, 20, 8);
+        ctx.fillStyle = varColor('accent-cyan'); ctx.fillRect(15, -2, 5, 4); // glowing tip
+        ctx.restore();
+    }
+}
+
+class Drone extends Entity {
+    constructor(x,y) {
+        super(x, y, 12, '#ff3c3c');
+        this.speed = 90 + (PersistentState.stats.loopsCompleted * 10);
+        this.hp = 30 + (PersistentState.stats.loopsCompleted * 10);
+        this.fireCooldown = Math.random();
+        this.type = 'enemy';
+    }
+    update(dt) {
+        if(!player) return;
+        let dist = Vec2.dist(this.pos, player.pos);
+        if(dist < 400) { // Detection range
+            let dir = new Vec2(player.pos.x - this.pos.x, player.pos.y - this.pos.y).normalize();
+            
+            // Simple obstacle avoidance logic (strafe)
+            let avoid = new Vec2(0,0);
+            for(let obs of obstacles) {
+                if(Vec2.dist(this.pos, obs.pos) < obs.radius + 50) {
+                    let push = new Vec2(this.pos.x - obs.pos.x, this.pos.y - obs.pos.y).normalize();
+                    avoid.add(push);
+                }
+            }
+            if(avoid.mag() > 0) {
+                dir.add(avoid).normalize();
+            }
+
+            this.vel.x = dir.x * this.speed;
+            this.vel.y = dir.y * this.speed;
+            this.angle = Math.atan2(player.pos.y - this.pos.y, player.pos.x - this.pos.x);
+            
+            if(this.fireCooldown > 0) this.fireCooldown -= dt;
+            // Line of sight check (simple)
+            if(this.fireCooldown <= 0 && dist < 250) {
+                this.fireCooldown = 1.2 - (PersistentState.stats.loopsCompleted * 0.1);
+                this.fireCooldown = Math.max(this.fireCooldown, 0.5);
+                let aimDir = new Vec2(player.pos.x - this.pos.x, player.pos.y - this.pos.y).normalize();
+                entities.push(new Bullet(this.pos.x+aimDir.x*15, this.pos.y+aimDir.y*15, aimDir, false));
+            }
+        } else {
+            this.vel.x *= 0.95; this.vel.y *= 0.95;
+        }
+        super.update(dt);
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y); ctx.rotate(this.angle);
+        ctx.beginPath(); ctx.moveTo(this.radius, 0); ctx.lineTo(-this.radius, -this.radius); ctx.lineTo(-this.radius*0.5, 0); ctx.lineTo(-this.radius, this.radius); ctx.closePath();
+        ctx.fillStyle = this.color; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.stroke();
+        // Eye
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(this.radius*0.3, 0, 3, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
+}
+
+class OreNode extends Entity {
+    constructor(x,y) {
+        super(x, y, 18, '#00f0ff');
+        this.hp = 25;
+        this.type = 'ore';
+        this.glow = 0;
+    }
+    update(dt) {
+        this.glow += dt * 3;
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y);
+        ctx.shadowBlur = 10 + Math.sin(this.glow)*5;
+        ctx.shadowColor = this.color;
+        
+        ctx.beginPath();
+        ctx.moveTo(0, -this.radius); ctx.lineTo(this.radius*0.8, -this.radius*0.5);
+        ctx.lineTo(this.radius, this.radius*0.5); ctx.lineTo(0, this.radius);
+        ctx.lineTo(-this.radius, this.radius*0.5); ctx.lineTo(-this.radius*0.8, -this.radius*0.5);
+        ctx.closePath();
+        
+        ctx.fillStyle = '#0a1a1a'; ctx.fill();
+        ctx.strokeStyle = this.color; ctx.lineWidth = 2; ctx.stroke();
+        ctx.restore();
+    }
+    takeDamage(amt) {
+        super.takeDamage(amt);
+        for(let i=0;i<3;i++) particles.push(new Particle(this.pos.x, this.pos.y, this.color));
+        if(this.dead) {
+            RunState.ore++;
+            updateSurfaceHUD();
+            for(let i=0;i<15;i++) particles.push(new Particle(this.pos.x, this.pos.y, this.color, 100));
+            checkExtraction();
+        }
+    }
+}
+
+// === ESPAÇO ===
+class PlayerShip extends Entity {
+    constructor(x,y) {
+        super(x, y, 16, '#ffffff');
+        this.baseThrust = 450;
+        this.turnSpeed = 3.5;
+        this.drag = 0.96; 
+        this.fireCooldown = 0;
+        this.angle = -Math.PI/2;
+    }
+    update(dt) {
+        if(keys.a) this.angle -= this.turnSpeed * dt;
+        if(keys.d) this.angle += this.turnSpeed * dt;
+        
+        let thrust = this.baseThrust + (PersistentState.ship.upgrades.engineLevel * 100);
+        if(keys.w) {
+            this.vel.x += Math.cos(this.angle) * thrust * dt;
+            this.vel.y += Math.sin(this.angle) * thrust * dt;
+            if(Math.random() < 0.6) {
+                let pDir = new Vec2(-Math.cos(this.angle), -Math.sin(this.angle));
+                particles.push(new Particle(this.pos.x + pDir.x*15, this.pos.y + pDir.y*15, '#ffa500', 80));
+            }
+        }
+        
+        this.vel.x *= this.drag; this.vel.y *= this.drag;
+        super.update(dt);
+
+        if(this.fireCooldown > 0) this.fireCooldown -= dt;
+        if(mouse.down && this.fireCooldown <= 0 && PersistentState.ship.ammo > 0) {
+            let wLvl = PersistentState.ship.upgrades.weaponLevel;
+            PersistentState.ship.ammo--;
+            this.fireCooldown = 0.25 - (wLvl * 0.05);
+            
+            let dir = new Vec2(Math.cos(this.angle), Math.sin(this.angle));
+            
+            if(wLvl >= 1) { // Double shot
+                let perp = new Vec2(-dir.y, dir.x);
+                entities.push(new Bullet(this.pos.x + dir.x*15 + perp.x*6, this.pos.y + dir.y*15 + perp.y*6, dir, true));
+                entities.push(new Bullet(this.pos.x + dir.x*15 - perp.x*6, this.pos.y + dir.y*15 - perp.y*6, dir, true));
+            } else {
+                entities.push(new Bullet(this.pos.x + dir.x*15, this.pos.y + dir.y*15, dir, true));
+            }
+            updateSpaceHUD();
+        }
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y); ctx.rotate(this.angle);
+        
+        if(PersistentState.ship.shield > 0) {
+            ctx.beginPath(); ctx.arc(0, 0, this.radius + 8, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(0, 136, 255, 0.1)'; ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.8)'; ctx.lineWidth = 2; ctx.stroke();
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(this.radius, 0); ctx.lineTo(-this.radius, -this.radius*0.8);
+        ctx.lineTo(-this.radius*0.4, 0); ctx.lineTo(-this.radius, this.radius*0.8);
+        ctx.closePath();
+        ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.strokeStyle = '#999'; ctx.lineWidth=1; ctx.stroke();
+        
+        // Cockpit window
+        ctx.fillStyle = varColor('accent-cyan');
+        ctx.beginPath(); ctx.arc(this.radius*0.2, 0, 4, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
+    takeDamage(amt) {
+        screenShake(10, 0.2);
+        if(PersistentState.ship.shield > 0) {
+            PersistentState.ship.shield -= amt;
+            if(PersistentState.ship.shield < 0) {
+                PersistentState.ship.hull += PersistentState.ship.shield;
+                PersistentState.ship.shield = 0;
+            }
+        } else {
+            PersistentState.ship.hull -= amt;
+        }
+        updateSpaceHUD();
+        if(PersistentState.ship.hull <= 0) triggerGameOver("Nave pulverizada por fogo hostil.");
+    }
+}
+
+class PirateShip extends Entity {
+    constructor(x,y, isBoss = false) {
+        super(x, y, isBoss ? 24 : 16, '#ff3c3c');
+        this.isBoss = isBoss;
+        this.speed = isBoss ? 80 : 120 + (PersistentState.stats.loopsCompleted * 5);
+        this.hp = isBoss ? 200 : 50 + (PersistentState.stats.loopsCompleted * 15);
+        this.fireCooldown = 1.0;
+        this.type = 'enemy';
+    }
+    update(dt) {
+        if(!player) return;
+        let dist = Vec2.dist(this.pos, player.pos);
+        let dir = new Vec2(player.pos.x - this.pos.x, player.pos.y - this.pos.y).normalize();
+        this.angle = Math.atan2(dir.y, dir.x);
+
+        // Asteroid avoidance
+        let avoid = new Vec2(0,0);
+        for(let obs of obstacles) {
+            if(Vec2.dist(this.pos, obs.pos) < obs.radius + 80) {
+                let push = new Vec2(this.pos.x - obs.pos.x, this.pos.y - obs.pos.y).normalize();
+                avoid.add(push);
+            }
+        }
+        if(avoid.mag() > 0) dir.add(avoid).normalize();
+
+        if(dist > (this.isBoss ? 200 : 150)) {
+            this.vel.x = dir.x * this.speed;
+            this.vel.y = dir.y * this.speed;
+        } else {
+            this.vel.x *= 0.9; this.vel.y *= 0.9; // brake
+        }
+        
+        if(this.fireCooldown > 0) this.fireCooldown -= dt;
+        if(this.fireCooldown <= 0 && dist < (this.isBoss ? 500 : 400)) {
+            this.fireCooldown = this.isBoss ? 0.8 : 1.2;
+            let spawnPos = new Vec2(this.pos.x + dir.x*this.radius, this.pos.y + dir.y*this.radius);
+            entities.push(new Bullet(spawnPos.x, spawnPos.y, dir, false, this.isBoss ? 20 : 10));
+            if(this.isBoss) {
+                // Boss double shot angled
+                let dir1 = new Vec2(Math.cos(this.angle+0.2), Math.sin(this.angle+0.2));
+                let dir2 = new Vec2(Math.cos(this.angle-0.2), Math.sin(this.angle-0.2));
+                entities.push(new Bullet(spawnPos.x, spawnPos.y, dir1, false, 15));
+                entities.push(new Bullet(spawnPos.x, spawnPos.y, dir2, false, 15));
+            }
+        }
+        super.update(dt);
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y); ctx.rotate(this.angle);
+        ctx.beginPath();
+        if(this.isBoss) {
+            ctx.moveTo(this.radius, 0); ctx.lineTo(0, -this.radius); ctx.lineTo(-this.radius, -this.radius*0.8);
+            ctx.lineTo(-this.radius*0.5, 0); ctx.lineTo(-this.radius, this.radius*0.8); ctx.lineTo(0, this.radius);
+        } else {
+            ctx.moveTo(this.radius, 0); ctx.lineTo(-this.radius, -this.radius); ctx.lineTo(-this.radius*0.5, 0); ctx.lineTo(-this.radius, this.radius);
+        }
+        ctx.closePath();
+        ctx.fillStyle = this.color; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth=2; ctx.stroke();
+        ctx.restore();
+    }
+}
+
+// === COMPARTILHADO ===
+class Bullet extends Entity {
+    constructor(x, y, dir, isPlayer, damage = 10) {
+        super(x, y, isPlayer ? 3 : 4, isPlayer ? '#00f0ff' : '#ff3c3c');
+        this.vel = new Vec2(dir.x * 600, dir.y * 600);
+        this.isPlayer = isPlayer;
+        this.damage = damage + (isPlayer ? PersistentState.ship.upgrades.weaponLevel*5 : 0);
+        this.life = 1.5;
+        this.type = 'bullet';
+    }
+    update(dt) {
+        super.update(dt);
+        this.life -= dt;
+        if(this.life <= 0) this.dead = true;
+        
+        // Bullet obstacle collision
+        for(let obs of obstacles) {
+            if(Vec2.dist(this.pos, obs.pos) < obs.radius) {
+                this.dead = true;
+                for(let i=0;i<3;i++) particles.push(new Particle(this.pos.x, this.pos.y, '#555', 50));
+            }
+        }
+    }
+    draw(ctx) {
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y);
+        ctx.shadowBlur = 8; ctx.shadowColor = this.color;
+        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI*2);
+        ctx.fillStyle = '#fff'; ctx.fill();
+        ctx.restore();
+    }
+}
+
+class Particle {
+    constructor(x,y,c, speed=80) {
+        this.pos = new Vec2(x,y);
+        let angle = Math.random() * Math.PI * 2;
+        let v = Math.random() * speed;
+        this.vel = new Vec2(Math.cos(angle)*v, Math.sin(angle)*v);
+        this.life = Math.random()*0.4 + 0.2;
+        this.color = c;
+    }
+    update(dt) { this.pos.add(new Vec2(this.vel.x*dt, this.vel.y*dt)); this.life-=dt; }
+    draw(ctx) { 
+        ctx.globalAlpha = Math.max(0, this.life*2);
+        ctx.fillStyle=this.color; ctx.fillRect(this.pos.x, this.pos.y, 3, 3); 
+        ctx.globalAlpha = 1;
+    }
+}
+
+class Star {
+    constructor() {
+        this.pos = new Vec2(Math.random()*WORLD_W, Math.random()*WORLD_H);
+        this.size = Math.random()*2 + 0.5;
+        this.alpha = Math.random();
+        this.speed = Math.random() * 0.5 + 0.1;
+    }
+    draw(ctx) {
+        this.alpha += 0.02 * (Math.random()>0.5?1:-1);
+        this.alpha = Math.max(0.1, Math.min(1, this.alpha));
+        ctx.fillStyle = `rgba(255,255,255,${this.alpha})`;
+        ctx.fillRect(this.pos.x, this.pos.y, this.size, this.size);
+    }
+}
+
+/**
+ * UTILS
+ */
+function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue('--'+name).trim(); }
+
+/**
+ * LOGICA DAS CENAS E LOOP
+ */
+function switchScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+}
+
+function startGame() {
+    PersistentState.inventory.rareOre = 0;
+    PersistentState.ship = { maxHull: 100, hull: 100, maxShield: 50, shield: 0, hasShield: false, ammo: 40, upgrades:{engineLevel:0, weaponLevel:0} };
+    PersistentState.stats = { loopsCompleted: 0, totalOreExtracted: 0 };
+    initSurface();
+}
+
+function resetGame() {
+    switchScreen('screen-boot');
+    cancelAnimationFrame(animationFrameId);
+}
+
+function triggerGameOver(reason) {
+    currentScene = 'OVER';
+    switchScreen('screen-game-over');
+    document.getElementById('go-desc').innerText = reason;
+    document.getElementById('go-stats').innerHTML = `Ciclos Completados: ${PersistentState.stats.loopsCompleted}<br>Total Extraído: ${PersistentState.stats.totalOreExtracted}`;
+}
+
+// --- FASE 1: SUPERFÍCIE ---
+function initSurface() {
+    currentScene = 'SURFACE';
+    switchScreen('screen-surface-hud');
+    
+    let target = 4 + PersistentState.stats.loopsCompleted;
+    RunState = { hp: 100, maxHp: 100, ammo: PersistentState.ship.ammo, ore: 0, targetOre: target, isExtractionReady: false };
+    updateSurfaceHUD();
+
+    entities = []; particles = []; obstacles = []; extractionZone = null; jumpPoint = null;
+
+    player = new PlayerSurface(WORLD_W/2, WORLD_H - 100);
+    entities.push(player);
+
+    // Generate Map (Craters & Ore)
+    for(let i=0; i<12; i++) {
+        let ox = 100 + Math.random()*(WORLD_W-200);
+        let oy = 100 + Math.random()*(WORLD_H-300);
+        // Dont spawn on player
+        if(Vec2.dist(new Vec2(ox,oy), player.pos) > 200) {
+            obstacles.push(new Obstacle(ox, oy, 40 + Math.random()*40, 'crater'));
+        }
+    }
+
+    for(let i=0; i<target + 2; i++) { // spawn slightly more than needed
+        let ox = 50 + Math.random()*(WORLD_W-100);
+        let oy = 50 + Math.random()*(WORLD_H-250);
+        entities.push(new OreNode(ox, oy));
+    }
+
+    // Spawn Drones based on loop
+    let numDrones = 3 + PersistentState.stats.loopsCompleted * 2;
+    for(let i=0; i<numDrones; i++) {
+        entities.push(new Drone(Math.random()*WORLD_W, Math.random()*(WORLD_H/2)));
+    }
+
+    document.getElementById('surf-objective').innerText = `Destrua veios para coletar minério (0/${target})`;
+
+    lastTime = performance.now();
+    cancelAnimationFrame(animationFrameId);
+    loop();
+}
+
+function checkExtraction() {
+    if(RunState.ore >= RunState.targetOre && !RunState.isExtractionReady) {
+        RunState.isExtractionReady = true;
+        document.getElementById('surf-objective').innerText = "Vá para a Zona de Extração (Verde) ao SUL";
+        extractionZone = { pos: new Vec2(WORLD_W/2, WORLD_H-100), radius: 60 };
+    }
+}
+
+function updateSurfaceHUD() {
+    document.getElementById('surf-hp-bar').style.width = `${Math.max(0, (RunState.hp / RunState.maxHp) * 100)}%`;
+    document.getElementById('surf-ammo').innerText = RunState.ammo;
+    document.getElementById('surf-ore').innerText = RunState.ore;
+    
+    // update target in UI html statically created
+    let hudTarget = document.getElementById('screen-surface-hud').querySelector('.color-ore').innerHTML;
+    document.getElementById('screen-surface-hud').querySelector('.color-ore').innerHTML = `MINÉRIO RARO: <span id="surf-ore" style="font-size: 1.5em; margin-left:10px;">${RunState.ore}</span>/${RunState.targetOre}`;
+}
+
+// --- FASE 2: ESTAÇÃO ---
+function completeSurfaceMission() {
+    currentScene = 'STATION';
+    PersistentState.inventory.rareOre += RunState.ore;
+    PersistentState.stats.totalOreExtracted += RunState.ore;
+    PersistentState.ship.ammo = Math.max(0, RunState.ammo); // carry over remaining
+    
+    switchScreen('screen-station');
+    document.getElementById('station-result-text').innerText = `Operação Concluída. Cofre abastecido: +${RunState.ore} Minérios`;
+    document.getElementById('station-loop-text').innerText = `Ciclos Completados: ${PersistentState.stats.loopsCompleted}`;
+    refreshStationUI();
+}
+
+function getPipsHTML(level, max) {
+    let html = '';
+    for(let i=0;i<max;i++) html += `<span class="upgrade-pip ${i<level ? 'active':''}"></span>`;
+    return html;
+}
+
+function refreshStationUI() {
+    let inv = PersistentState.inventory;
+    let ship = PersistentState.ship;
+    
+    document.getElementById('stat-ore').innerText = inv.rareOre;
+    document.getElementById('stat-shield-status').innerText = ship.hasShield ? "Escudo: Operacional" : "Escudo: Ausente";
+    document.getElementById('stat-shield-status').style.color = ship.hasShield ? varColor('accent-cyan') : '#888';
+    
+    document.getElementById('stat-engine-pips').innerHTML = getPipsHTML(ship.upgrades.engineLevel, 3);
+    document.getElementById('stat-weapon-pips').innerHTML = getPipsHTML(ship.upgrades.weaponLevel, 3);
+
+    // Buttons
+    document.getElementById('btn-craft-shield').disabled = inv.rareOre < 3 || ship.hasShield;
+    document.getElementById('btn-craft-ammo').disabled = inv.rareOre < 1;
+    document.getElementById('btn-craft-engine').disabled = inv.rareOre < 4 || ship.upgrades.engineLevel >= 3;
+    document.getElementById('btn-craft-weapon').disabled = inv.rareOre < 5 || ship.upgrades.weaponLevel >= 3;
+    
+    let repairCost = 1;
+    document.getElementById('btn-repair').disabled = inv.rareOre < repairCost || ship.hull >= ship.maxHull;
+}
+
+function craftShield() { if(spendOre(3)) { PersistentState.ship.hasShield = true; refreshStationUI(); } }
+function craftAmmo() { if(spendOre(1)) { PersistentState.ship.ammo += 15; refreshStationUI(); } }
+function craftEngine() { if(spendOre(4)) { PersistentState.ship.upgrades.engineLevel++; refreshStationUI(); } }
+function craftWeapon() { if(spendOre(5)) { PersistentState.ship.upgrades.weaponLevel++; refreshStationUI(); } }
+function repairShip() { 
+    if(spendOre(1)) { 
+        PersistentState.ship.hull = Math.min(PersistentState.ship.maxHull, PersistentState.ship.hull + 25); 
+        refreshStationUI(); 
+    } 
+}
+
+function spendOre(amt) {
+    if(PersistentState.inventory.rareOre >= amt) {
+        PersistentState.inventory.rareOre -= amt;
+        return true;
+    }
+    return false;
+}
+
+function launchToSpace() {
+    initSpace();
+}
+
+// --- FASE 3: ESPAÇO ---
+let stars = [];
+function initSpace() {
+    currentScene = 'SPACE';
+    switchScreen('screen-space-hud');
+    
+    if(PersistentState.ship.hasShield) {
+        PersistentState.ship.shield = PersistentState.ship.maxShield;
+        document.getElementById('space-shield-container').style.display = 'flex';
+    } else {
+        document.getElementById('space-shield-container').style.display = 'none';
+    }
+    updateSpaceHUD();
+
+    entities = []; particles = []; obstacles = []; extractionZone = null;
+    if(stars.length === 0) for(let i=0;i<150;i++) stars.push(new Star());
+
+    player = new PlayerShip(100, WORLD_H/2);
+    entities.push(player);
+
+    // Asteroids
+    for(let i=0; i<15; i++) {
+        let ox = 300 + Math.random()*(WORLD_W-400);
+        let oy = 100 + Math.random()*(WORLD_H-200);
+        obstacles.push(new Obstacle(ox, oy, 30 + Math.random()*50, 'asteroid'));
+    }
+
+    // Enemies
+    let numPirates = 1 + Math.floor(PersistentState.stats.loopsCompleted / 2);
+    for(let i=0;i<numPirates;i++) {
+        entities.push(new PirateShip(WORLD_W - 200, Math.random()*WORLD_H));
+    }
+    // Boss Every 3 loops
+    if(PersistentState.stats.loopsCompleted > 0 && PersistentState.stats.loopsCompleted % 2 === 0) {
+        entities.push(new PirateShip(WORLD_W - 150, WORLD_H/2, true));
+        document.getElementById('space-threat').innerText = "CRÍTICA (Cruzador)";
+    } else {
+        document.getElementById('space-threat').innerText = "Alta";
+    }
+
+    jumpPoint = { pos: new Vec2(WORLD_W - 100, WORLD_H/2), radius: 80 };
+
+    lastTime = performance.now();
+    cancelAnimationFrame(animationFrameId);
+    loop();
+}
+
+function updateSpaceHUD() {
+    document.getElementById('space-hull-bar').style.width = `${Math.max(0, (PersistentState.ship.hull / PersistentState.ship.maxHull) * 100)}%`;
+    document.getElementById('space-shield-bar').style.width = `${Math.max(0, (PersistentState.ship.shield / PersistentState.ship.maxShield) * 100)}%`;
+}
+
+function completeSpaceMission() {
+    PersistentState.stats.loopsCompleted++;
+    // Consumir o escudo no salto
+    PersistentState.ship.hasShield = false;
+    PersistentState.ship.shield = 0;
+    initSurface();
+}
+
+
+/**
+ * UPDATE E DRAW GERAL
+ */
+function loop(time = 0) {
+    if(currentScene === 'OVER' || currentScene === 'STATION' || currentScene === 'BOOT') return;
+
+    const dt = Math.min((time - lastTime) / 1000, 0.1);
+    lastTime = time;
+
+    update(dt);
+    draw();
+
+    mouse.clicked = false;
+    animationFrameId = requestAnimationFrame(loop);
+}
+
+function update(dt) {
+    // Camera Logic
+    if(player) {
+        let targetCamX = player.pos.x - W/2;
+        let targetCamY = player.pos.y - H/2;
+        camera.x += (targetCamX - camera.x) * 5 * dt; // smooth follow
+        camera.y += (targetCamY - camera.y) * 5 * dt;
+        
+        // Clamp camera
+        camera.x = Math.max(0, Math.min(camera.x, WORLD_W - W));
+        camera.y = Math.max(0, Math.min(camera.y, WORLD_H - H));
+
+        // Update mouse world position
+        mouse.worldX = mouse.x + camera.x;
+        mouse.worldY = mouse.y + camera.y;
+    }
+
+    if(camera.shakeTime > 0) {
+        camera.shakeTime -= dt;
+    }
+
+    entities.forEach(e => e.update(dt));
+    particles.forEach(p => p.update(dt));
+    
+    entities = entities.filter(e => !e.dead);
+    particles = particles.filter(p => p.life > 0);
+
+    // Collisions
+    for(let i=0; i<entities.length; i++) {
+        for(let j=0; j<entities.length; j++) {
+            let a = entities[i]; let b = entities[j];
+            if(a===b) continue;
+            
+            if(a.type === 'bullet' && a.isPlayer && (b.type === 'enemy' || b.type === 'ore')) {
+                if(Vec2.dist(a.pos, b.pos) < b.radius) {
+                    b.takeDamage(a.damage);
+                    a.dead = true;
+                    for(let k=0;k<4;k++) particles.push(new Particle(a.pos.x, a.pos.y, b.color, 120));
+                }
+            }
+            if(a.type === 'bullet' && !a.isPlayer && b === player) {
+                if(Vec2.dist(a.pos, b.pos) < b.radius) {
+                    if(currentScene === 'SURFACE') {
+                        screenShake(8, 0.15);
+                        RunState.hp -= a.damage;
+                        updateSurfaceHUD();
+                        if(RunState.hp <= 0) triggerGameOver("Operador Abatido na Superfície.");
+                    } else if (currentScene === 'SPACE') {
+                        player.takeDamage(a.damage);
+                    }
+                    a.dead = true;
+                    for(let k=0;k<4;k++) particles.push(new Particle(a.pos.x, a.pos.y, '#fff', 120));
+                }
+            }
+        }
+    }
+
+    if(currentScene === 'SURFACE' && RunState.isExtractionReady && extractionZone) {
+        if(Vec2.dist(player.pos, extractionZone.pos) < extractionZone.radius) {
+            completeSurfaceMission();
+        }
+    }
+
+    if(currentScene === 'SPACE' && jumpPoint) {
+        if(Vec2.dist(player.pos, jumpPoint.pos) < jumpPoint.radius) {
+            completeSpaceMission();
+        }
+    }
+}
+
+function draw() {
+    ctx.fillStyle = currentScene === 'SPACE' ? '#000000' : '#08080a';
+    ctx.fillRect(0,0,W,H);
+
+    ctx.save();
+    
+    // Apply Camera
+    let cx = camera.x;
+    let cy = camera.y;
+    if(camera.shakeTime > 0) {
+        cx += (Math.random()-0.5) * camera.shakeMagnitude;
+        cy += (Math.random()-0.5) * camera.shakeMagnitude;
+    }
+    ctx.translate(-cx, -cy);
+
+    // Background Elements
+    if(currentScene === 'SPACE') {
+        stars.forEach(s => s.draw(ctx));
+    } else {
+        // Surface Grid
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.03)';
+        ctx.lineWidth = 2;
+        for(let i=0; i<WORLD_W; i+=100) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,WORLD_H); ctx.stroke(); }
+        for(let i=0; i<WORLD_H; i+=100) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(WORLD_W,i); ctx.stroke(); }
+        
+        // Boundaries Warning
+        ctx.strokeStyle = 'rgba(255, 60, 60, 0.3)';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(0,0,WORLD_W, WORLD_H);
+    }
+
+    // Zones
+    if(currentScene === 'SURFACE' && extractionZone) {
+        ctx.beginPath(); ctx.arc(extractionZone.pos.x, extractionZone.pos.y, extractionZone.radius, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(60, 255, 140, 0.15)'; ctx.fill();
+        ctx.strokeStyle = '#3cff8c'; ctx.lineWidth=3; ctx.stroke();
+        ctx.fillStyle = '#3cff8c'; ctx.textAlign = 'center'; ctx.font = "bold 16px Courier"; ctx.fillText("ZONA DE EXTRAÇÃO", extractionZone.pos.x, extractionZone.pos.y+5);
+    }
+    
+    if(currentScene === 'SPACE' && jumpPoint) {
+        ctx.beginPath(); ctx.arc(jumpPoint.pos.x, jumpPoint.pos.y, jumpPoint.radius, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(0, 136, 255, 0.15)'; ctx.fill();
+        ctx.strokeStyle = '#0088ff'; ctx.lineWidth=3; ctx.stroke();
+        ctx.fillStyle = '#0088ff'; ctx.textAlign = 'center'; ctx.font = "bold 16px Courier"; ctx.fillText("PONTO DE SALTO", jumpPoint.pos.x, jumpPoint.pos.y+5);
+    }
+
+    obstacles.forEach(o => o.draw(ctx));
+    entities.forEach(e => e.draw(ctx));
+    particles.forEach(p => p.draw(ctx));
+
+    ctx.restore();
+}
+
+// Start
+switchScreen('screen-boot');
+</script>
+</body>
+</html>
