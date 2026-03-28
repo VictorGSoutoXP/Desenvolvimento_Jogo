@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ÓRBITA & QUEDA — PROFUNDEZAS DE ENCÉLADO</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+:root {
+  --bg:#000810; --cyan:#00c8e8; --green:#00e886; --amber:#ffaa00;
+  --red:#ff2244; --bio:#2dcc70; --crystal:#00bbff; --text:#b8d4dc;
+  --dim:#3a5a6a; --panel:rgba(0,8,20,0.96); --border:rgba(0,200,232,0.18);
+  --font:'Share Tech Mono','Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;}
+body{background:#000;color:var(--text);font-family:var(--font);overflow:hidden;display:flex;justify-content:center;align-items:center;height:100vh;}
+#wrap{position:relative;width:min(100vw,calc(100vh * 16/9));aspect-ratio:16/9;background:var(--bg);overflow:hidden;}
+#wrap::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(to bottom,transparent 0px,transparent 2px,rgba(0,0,0,0.1) 2px,rgba(0,0,0,0.1) 4px);pointer-events:none;z-index:200;}
+#wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.85) 100%);pointer-events:none;z-index:199;}
+canvas{position:absolute;inset:0;width:100%;height:100%;}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;z-index:10;}
+.screen.active{display:flex;}
+#s-boot{background:var(--panel);justify-content:center;align-items:center;pointer-events:auto;gap:0;}
+.boot-eyebrow{color:var(--dim);font-size:clamp(0.5rem,0.85vw,0.68rem);letter-spacing:5px;margin-bottom:6px;}
+.boot-title{color:#fff;font-size:clamp(1.8rem,4.2vw,3.6rem);letter-spacing:10px;font-weight:normal;line-height:1;text-shadow:0 0 40px rgba(0,200,232,0.2);}
+.boot-sub{color:var(--cyan);font-size:clamp(0.55rem,0.9vw,0.75rem);letter-spacing:6px;margin-top:6px;opacity:0.7;}
+.boot-divider{width:320px;height:1px;background:linear-gradient(to right,transparent,var(--dim),transparent);margin:18px 0;}
+.boot-lore{max-width:520px;font-size:clamp(0.62rem,0.95vw,0.78rem);color:#6a8a98;line-height:1.8;text-align:left;border-left:2px solid var(--dim);padding-left:18px;margin-bottom:16px;}
+.boot-lore strong{color:var(--text);}
+.boot-controls{font-size:clamp(0.55rem,0.8vw,0.66rem);color:var(--dim);letter-spacing:2px;margin-bottom:16px;text-align:center;}
+.boot-controls span{color:var(--cyan);}
+.btn{background:transparent;color:var(--cyan);border:1px solid var(--cyan);padding:9px 22px;font-size:clamp(0.62rem,0.95vw,0.76rem);font-family:var(--font);cursor:pointer;transition:background 0.12s,box-shadow 0.12s;text-transform:uppercase;letter-spacing:3px;margin:4px;}
+.btn:hover:not(:disabled){background:var(--cyan);color:#000810;box-shadow:0 0 14px rgba(0,200,232,0.35);}
+.btn:disabled{border-color:var(--dim);color:var(--dim);cursor:not-allowed;}
+.btn-amber{color:var(--amber);border-color:var(--amber);}
+.btn-amber:hover:not(:disabled){background:var(--amber);color:#000;box-shadow:0 0 14px rgba(255,170,0,0.35);}
+#s-station{background:var(--panel);pointer-events:auto;justify-content:flex-start;}
+.stn-header{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.5);flex-shrink:0;}
+.stn-title{color:#fff;font-size:clamp(0.8rem,1.5vw,1.05rem);letter-spacing:5px;font-weight:normal;}
+.stn-title span{color:var(--dim);font-size:0.7em;}
+.stn-day{color:var(--amber);font-size:clamp(0.58rem,0.85vw,0.7rem);letter-spacing:2px;}
+.stn-body{display:grid;grid-template-columns:1fr 1.5fr 1fr;flex:1;overflow:hidden;min-height:0;}
+.panel{padding:12px 15px;border-right:1px solid var(--border);overflow:hidden;}
+.panel:last-child{border-right:none;}
+.p-title{color:var(--dim);font-size:clamp(0.52rem,0.75vw,0.62rem);letter-spacing:4px;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid rgba(0,200,232,0.07);}
+.stat-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:clamp(0.58rem,0.82vw,0.7rem);}
+.s-label{color:var(--dim);width:88px;flex-shrink:0;letter-spacing:1px;}
+.s-pct{width:30px;text-align:right;flex-shrink:0;font-size:0.95em;}
+.bar-track{flex:1;height:3px;background:rgba(255,255,255,0.05);}
+.bar-fill{height:100%;transition:width 0.4s ease;}
+.f-cyan{background:var(--cyan);} .f-green{background:var(--green);} .f-amber{background:var(--amber);} .f-red{background:var(--red);} .f-bio{background:var(--bio);}
+.inv-row{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:clamp(0.6rem,0.85vw,0.72rem);}
+.inv-row:last-child{border-bottom:none;}
+.inv-label{color:var(--dim);} .inv-val{color:#fff;font-size:1.1em;}
+.mission-box{background:rgba(0,200,232,0.025);border:1px solid rgba(0,200,232,0.1);padding:9px 11px;margin-bottom:10px;}
+.mission-label{color:var(--cyan);font-size:clamp(0.52rem,0.72vw,0.6rem);letter-spacing:4px;margin-bottom:5px;}
+.mission-text{font-size:clamp(0.58rem,0.8vw,0.7rem);color:#7090a0;line-height:1.65;}
+#log-container{display:flex;flex-direction:column;gap:4px;}
+.log-entry{font-size:clamp(0.56rem,0.78vw,0.66rem);line-height:1.55;padding:6px 9px;border-left:2px solid var(--dim);background:rgba(0,0,0,0.3);color:#506070;}
+.log-entry.warn{border-color:var(--amber);color:#907030;} .log-entry.alert{border-color:var(--red);color:#903040;} .log-entry.ok{border-color:var(--green);color:#307050;}
+.proto-list{display:flex;flex-direction:column;gap:4px;}
+.proto-btn{background:transparent;border:1px solid var(--border);color:var(--text);padding:8px 10px;font-family:var(--font);font-size:clamp(0.58rem,0.8vw,0.7rem);cursor:pointer;text-align:left;transition:border-color 0.12s,color 0.12s;letter-spacing:1px;}
+.proto-btn:hover:not(:disabled){border-color:var(--cyan);color:var(--cyan);background:rgba(0,200,232,0.04);}
+.proto-btn:disabled{color:var(--dim);cursor:not-allowed;}
+.proto-cost{color:var(--amber);margin-right:6px;}
+.report-row{display:flex;justify-content:space-between;font-size:clamp(0.56rem,0.78vw,0.66rem);line-height:2.1;}
+.report-row .lbl{color:var(--dim);} .report-row .val{color:var(--text);}
+.stn-footer{display:flex;border-top:1px solid var(--border);flex-shrink:0;}
+.stn-footer .btn{flex:1;margin:0;border:none;border-right:1px solid var(--border);padding:11px 6px;font-size:clamp(0.58rem,0.85vw,0.72rem);}
+.stn-footer .btn:last-child{border-right:none;}
+#s-surf-hud,#s-space-hud{pointer-events:none;}
+.hud-top{display:flex;justify-content:space-between;align-items:center;padding:6px 14px;background:rgba(0,0,0,0.72);border-bottom:1px solid rgba(0,200,232,0.12);font-size:clamp(0.58rem,0.8vw,0.66rem);letter-spacing:1px;flex-shrink:0;}
+.hud-group{display:flex;gap:14px;align-items:center;}
+.hud-stat{display:flex;align-items:center;gap:6px;}
+.hud-stat .lbl{color:var(--dim);}
+.hud-mini{width:54px;height:3px;background:rgba(255,255,255,0.08);}
+.hud-mini-fill{height:100%;transition:width 0.2s;}
+.hud-val{min-width:24px;color:var(--text);}
+.hud-center{color:var(--cyan);font-size:0.9em;letter-spacing:3px;}
+.action-prompt{position:absolute;bottom:15%;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.82);border:1px solid rgba(255,255,255,0.18);color:#fff;padding:5px 14px;font-size:clamp(0.58rem,0.82vw,0.68rem);letter-spacing:2px;display:none;white-space:nowrap;pointer-events:none;}
+/* Wave counter */
+#wave-hud{position:absolute;top:14%;left:2%;background:rgba(0,0,0,0.82);border:1px solid var(--amber);padding:8px 12px;font-size:clamp(0.58rem,0.82vw,0.68rem);letter-spacing:2px;display:none;pointer-events:none;z-index:30;}
+#wave-hud .wt{color:var(--amber);margin-bottom:3px;}
+#wave-hud .wv{color:#fff;font-size:1.15em;}
+#scanner-hud{position:absolute;top:14%;right:2%;background:rgba(0,0,0,0.85);border:1px solid var(--bio);padding:9px 13px;font-size:clamp(0.58rem,0.8vw,0.66rem);letter-spacing:2px;display:none;pointer-events:none;z-index:30;}
+#scanner-hud .sc-title{color:var(--bio);margin-bottom:4px;}
+#scanner-hud .sc-val{color:#fff;font-size:1.15em;}
+#s-over{background:rgba(0,2,8,0.97);justify-content:center;align-items:center;pointer-events:auto;text-align:center;}
+.over-eyebrow{color:var(--red);font-size:clamp(0.55rem,0.8vw,0.68rem);letter-spacing:6px;margin-bottom:9px;opacity:0.8;}
+.over-title{color:#fff;font-size:clamp(1.3rem,2.8vw,2.1rem);letter-spacing:5px;font-weight:normal;margin-bottom:16px;}
+.over-report{max-width:460px;text-align:left;border:1px solid rgba(255,34,68,0.18);background:rgba(255,34,68,0.025);padding:13px 17px;margin:0 auto 18px;}
+.over-row{display:flex;justify-content:space-between;font-size:clamp(0.6rem,0.85vw,0.72rem);padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.over-row:last-child{border:none;margin-top:7px;}
+.over-row .lbl{color:var(--dim);} .over-row .val{color:var(--crystal);}
+.over-note{color:var(--dim);font-size:clamp(0.56rem,0.78vw,0.66rem);line-height:1.6;}
+#flash{position:absolute;inset:0;pointer-events:none;z-index:50;opacity:0;transition:opacity 0.08s;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="flash"></div>
+  <div id="wave-hud"><div class="wt">ONDA</div><div class="wv" id="wave-val">1/5</div></div>
+  <div id="scanner-hud"><div class="sc-title">SCANNER BIO</div><div id="sc-reading" class="sc-val">—</div><div style="color:var(--dim);font-size:0.85em;margin-top:3px" id="sc-label">—</div></div>
+
+  <div id="s-boot" class="screen active">
+    <div class="boot-eyebrow">KHEPRI COLONIAL SYSTEMS · OPERAÇÕES DE MERGULHO</div>
+    <div class="boot-title">ÓRBITA & QUEDA</div>
+    <div class="boot-sub">OCEANO SUBGLACIAL DE ENCÉLADO · ANO 2092</div>
+    <div class="boot-divider"></div>
+    <div class="boot-lore">
+      O submarino <strong>Khepri-9</strong> opera 12km abaixo do gelo de Encélado há 51 dias.<br>
+      Missão: extração de Cristais de Éter do leito oceânico — supercondutor capaz de resolver a crise energética da Terra.<br><br>
+      Nas últimas coletas, perturbamos algo antigo. Leviatãs defendem seus territórios. Criaturas-Nadir parasitam nosso casco.<br><br>
+      <strong>A Helix quer lucro. O Diretório quer quarentena.</strong><br>
+      Você é o único que ainda mergulha.
+    </div>
+    <div class="boot-controls">
+      <span>WASD</span> nadar &nbsp;·&nbsp; <span>MOUSE</span> apontar &nbsp;·&nbsp; <span>CLIQUE</span> atirar / extrair &nbsp;·&nbsp; <span>F</span> scanner bio &nbsp;·&nbsp; <span>E</span> kit de reparo
+    </div>
+    <button class="btn" onclick="Game.start()">▶ INICIAR MERGULHO</button>
+  </div>
+
+  <div id="s-station" class="screen">
+    <div class="stn-header">
+      <div class="stn-title">SUBMARINO KHEPRI-9 <span>// PROFUNDEZAS DE ENCÉLADO</span></div>
+      <div class="stn-day" id="stn-day">TURNO 01 — OPERAÇÃO ALFA</div>
+    </div>
+    <div class="stn-body">
+      <div class="panel">
+        <div class="p-title">Sistemas do Submarino</div>
+        <div class="stat-row"><span class="s-label">CASCO</span><div class="bar-track"><div class="bar-fill f-cyan" id="b-hull" style="width:100%"></div></div><span class="s-pct" id="v-hull">100%</span></div>
+        <div class="stat-row"><span class="s-label">INFECÇÃO BIO</span><div class="bar-track"><div class="bar-fill f-bio" id="b-bio" style="width:0%"></div></div><span class="s-pct" id="v-bio" style="color:var(--bio)">0%</span></div>
+        <div class="stat-row"><span class="s-label">SUPORTE VIDA</span><div class="bar-track"><div class="bar-fill f-green" id="b-life" style="width:100%"></div></div><span class="s-pct" id="v-life">100%</span></div>
+        <div style="margin-top:12px;"><div class="p-title">Inventário</div>
+          <div class="inv-row"><span class="inv-label" style="color:var(--crystal)">CRISTAIS (un)</span><span class="inv-val" id="inv-crystal" style="color:var(--crystal)">0</span></div>
+          <div class="inv-row"><span class="inv-label">KITS DE REPARO</span><span class="inv-val" id="inv-kits">2</span></div>
+          <div class="inv-row"><span class="inv-label">INIMIGOS ABATIDOS</span><span class="inv-val" id="inv-kills">0</span></div>
+        </div>
+        <div style="margin-top:12px;"><div class="p-title">Relatório</div>
+          <div class="report-row"><span class="lbl">TURNO</span><span class="val" id="r-day">01</span></div>
+          <div class="report-row"><span class="lbl">MERGULHOS</span><span class="val" id="r-dives">0</span></div>
+          <div class="report-row"><span class="lbl">CRISTAIS TOTAL</span><span class="val" id="r-total" style="color:var(--crystal)">0</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="p-title">Central de Comando</div>
+        <div class="mission-box"><div class="mission-label">BRIEFING ATUAL</div><div class="mission-text" id="m-brief">Aguardando autorização...</div></div>
+        <div class="p-title">Logs do Sonar</div>
+        <div id="log-container"></div>
+      </div>
+      <div class="panel">
+        <div class="p-title">Protocolos</div>
+        <div class="proto-list">
+          <button class="proto-btn" id="btn-repair" onclick="Game.repair()">[2 CRISTAL] REPARAR ESCAFANDRO</button>
+          <button class="proto-btn" id="btn-purge"  onclick="Game.purge()">[3 CRISTAL] PURGAR FILTROS BIO</button>
+          <button class="proto-btn" id="btn-hull"   onclick="Game.reinforceHull()">[4 CRISTAL] REFORÇAR CASCO</button>
+          <button class="proto-btn" id="btn-ammo"   onclick="Game.buyAmmo()">[1 CRISTAL] RECARREGAR MUNIÇÃO</button>
+        </div>
+        <div style="margin-top:14px;"><div class="p-title">Status Nadir</div>
+          <div id="nadir-status" style="font-size:clamp(0.56rem,0.78vw,0.66rem);color:var(--dim);line-height:1.8;">Aguardando dados de campo...</div>
+        </div>
+      </div>
+    </div>
+    <div class="stn-footer">
+      <button class="btn" onclick="Game.goSurface()">▼ MERGULHAR — LEITO OCEÂNICO</button>
+      <button class="btn btn-amber" onclick="Game.goSpace()">◌ EVA — CASCO EXTERNO</button>
+    </div>
+  </div>
+
+  <div id="s-surf-hud" class="screen">
+    <div class="hud-top">
+      <div class="hud-group">
+        <div class="hud-stat"><span class="lbl">TRAJE</span><div class="hud-mini"><div class="hud-mini-fill f-cyan" id="h-hp" style="width:100%"></div></div><span class="hud-val" id="hv-hp">100</span></div>
+        <div class="hud-stat"><span class="lbl">AQUECIMENTO</span><div class="hud-mini"><div class="hud-mini-fill" id="h-bat" style="width:100%;background:var(--text)"></div></div><span class="hud-val" id="hv-bat">100</span></div>
+        <div class="hud-stat"><span class="lbl">MUNIÇÃO</span><div class="hud-mini"><div class="hud-mini-fill f-amber" id="h-ammo" style="width:100%"></div></div><span class="hud-val" id="hv-ammo">30</span></div>
+      </div>
+      <span class="hud-center" id="hud-wave-txt">LEITO OCEÂNICO · ONDA 1/5</span>
+      <div class="hud-group">
+        <div class="hud-stat"><span class="lbl" style="color:var(--crystal)">CRISTAIS</span><span class="hud-val" style="color:var(--crystal)" id="hv-crystal">0/5</span></div>
+      </div>
+    </div>
+    <div class="action-prompt" id="p-surf">APROXIME-SE DE UM CRISTAL PARA EXTRAIR</div>
+  </div>
+
+  <div id="s-space-hud" class="screen">
+    <div class="hud-top">
+      <div class="hud-group">
+        <div class="hud-stat"><span class="lbl">PROPULSOR</span><div class="hud-mini"><div class="hud-mini-fill f-amber" id="h-fuel" style="width:100%"></div></div><span class="hud-val" id="hv-fuel">100</span></div>
+        <div class="hud-stat"><span class="lbl">MUNIÇÃO</span><div class="hud-mini"><div class="hud-mini-fill f-amber" id="h-ammo2" style="width:100%"></div></div><span class="hud-val" id="hv-ammo2">30</span></div>
+      </div>
+      <span class="hud-center" style="color:var(--amber)">CASCO EXTERNO · ZONA DE COMBATE</span>
+      <div class="hud-group">
+        <div class="hud-stat"><span class="lbl">LEVIATÃS</span><span class="hud-val" style="color:var(--red)" id="hv-bio">0</span></div>
+      </div>
+    </div>
+    <div class="action-prompt" id="p-space">CLIQUE PARA ATIRAR NOS LEVIATÃS</div>
+  </div>
+
+  <div id="s-over" class="screen">
+    <div class="over-eyebrow">— RELATÓRIO DE INCIDENTE — SUBMARINO KHEPRI-9 —</div>
+    <div class="over-title" id="o-title">FALHA OPERACIONAL</div>
+    <div class="over-report">
+      <div class="over-row"><span class="lbl">OPERADOR</span><span class="val">MERGULHADOR-ALFA</span></div>
+      <div class="over-row"><span class="lbl">TURNO</span><span class="val" id="o-day">—</span></div>
+      <div class="over-row"><span class="lbl">MERGULHOS</span><span class="val" id="o-dives">—</span></div>
+      <div class="over-row"><span class="lbl">CRISTAIS COLETADOS</span><span class="val" id="o-crystal">—</span></div>
+      <div class="over-row"><span class="lbl">INIMIGOS ABATIDOS</span><span class="val" id="o-kills">—</span></div>
+      <div class="over-row"><span class="lbl">CAUSA DA FALHA</span><span class="val" id="o-cause">—</span></div>
+      <div class="over-row"><span class="over-note" id="o-note">Registro enviado ao Diretório de Segurança Orbital.</span></div>
+    </div>
+    <button class="btn" onclick="Game.start()">↺ REINICIAR OPERAÇÃO</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   ÓRBITA & QUEDA — V8
+   Personagem redesenhado. Peixes muito maiores e mais
+   assustadores. Novo inimigo: Nadir-Spawn (cefalópode).
+   Cadáveres flutuando. Ondas de inimigos. Missões longas.
+══════════════════════════════════════════════════════ */
+
+const rnd    = (a,b) => a + Math.random()*(b-a);
+const clamp  = (v,a,b) => Math.max(a,Math.min(b,v));
+const lerp   = (a,b,t) => a+(b-a)*t;
+const d2     = (ax,ay,bx,by) => Math.sqrt((ax-bx)**2+(ay-by)**2);
+const norm   = (x,y) => { const l=Math.sqrt(x*x+y*y)||1; return [x/l,y/l]; }
+
+/* ── STATE ─────────────────────────────────────────── */
+const S = {
+  day:1, dives:0, totalCrystal:0, totalKills:0,
+  inv:{crystal:0, kits:3, ammo:30}, hull:100, infection:0, life:100,
+  logs:[], logIdx:0
+};
+const R = {
+  hp:100, bat:100, fuel:100, crystal:0, ammo:30,
+  wave:1, maxWave:5, waveCleared:false,
+  reset() { this.hp=100;this.bat=100;this.fuel=100;this.crystal=0;this.ammo=S.inv.ammo;this.wave=1;this.waveCleared=false; }
+};
+
+/* ── LORE ───────────────────────────────────────────── */
+const LORE=[
+  {c:'ok',   t:'Mergulho 01 — Sistemas nominais. Cristais de Éter detectados no leito. Perturbamos sedimento antigo. Recomendo cautela.'},
+  {c:'',     t:'Mergulho 02 — Fauna local reagiu às vibrações das perfuratrizes. Peixes abissais de 4 metros documentados. Agressivos.'},
+  {c:'warn', t:'Mergulho 03 — Novas criaturas identificadas: cefalópodes coloniais. Emitem esporos. Parecem coordenados. Origem: fissuras hidrotermais.'},
+  {c:'warn', t:'Mergulho 04 — AVISO: Infecção Nadir no reservatório D. Criaturas-Spawn dentro do casco. Helix bloqueou protocolo de purga.'},
+  {c:'alert',t:'Mergulho 05 — Leviatã Classe-3 avistado. 12 metros. Mandíbulas capazes de rasgar placas de titânio. Não saia sem escolta.'},
+  {c:'alert',t:'Mergulho 06 — O Nadir está se adaptando ao calor dos nossos sistemas. Spawn com padrões de ataque novos. Temo que aprenderam.'},
+  {c:'alert',t:'Mergulho 07 — Khepri-9 comprometido. Se isso for lido: o oceano não é vazio. Nunca foi. E agora é tarde demais.'},
+];
+const BRIEFS=[
+  'ONDA 1/5: Elimine a fauna local. Colete 5 cristais para retornar. Seu aliado cobrirá o flanco.',
+  'Resistência aumentando. Fauna mais agressiva após as primeiras extrações. Cuidado com os Spawn.',
+  'RELATÓRIO: Criaturas Nadir-Spawn detectadas em sua rota de coleta. São rápidas. Atirem primeiro.',
+  'ATENÇÃO: Leviatã maior registrado nesta zona. Concentre fogo. Não desperdice munição.',
+  'URGENTE: Nível crítico de infecção. Colete os cristais e recue. A estação não aguenta mais.',
+];
+const NADIR_STATUS=[
+  'Nenhuma anomalia biológica no interior.',
+  'Vestígios de Spawn nas frestas de ventilação.',
+  'Biofilme ativo nos dutos de aquecimento. Crescimento lento.',
+  'ALERTA: Spawn dentro do setor de suporte de vida. Purga necessária.',
+  'RISCO CRÍTICO: Nadir domina sistemas centrais. Sobrevivência improvável.',
+];
+const OVER_TITLES=['MERGULHADOR PERDIDO','RUPTURA DE PRESSÃO','ASSIMILADO PELO NADIR','IMPLOSÃO ESTRUTURAL','FIM DO PROTOCOLO'];
+const OVER_NOTES={
+  bio:'O Nadir parasitou os filtros do escafandro. Seus pulmões inalaram esporos coloniais.',
+  battery:'Sem aquecimento, a pressão de 120 atm esmagou o traje em menos de 3 segundos.',
+  hull:'As mandíbulas do Leviatã perfuraram o casco principal. Descompressão imediata.',
+  combat:'Despedaçado pela fauna abissal. Seus restos alimentarão o ecossistema que perturbamos.',
+  default:'A Corporação Helix lamenta informar. Sua família receberá a parcela mínima do contrato.'
+};
+
+/* ── CONTROLLER ─────────────────────────────────────── */
+const Game = {
+  scene:'BOOT',
+  start() {
+    Object.assign(S,{day:1,dives:0,totalCrystal:0,totalKills:0,inv:{crystal:0,kits:3,ammo:30},hull:100,infection:0,life:100,logs:[],logIdx:0});
+    this.goStation();
+  },
+  goStation() {
+    this.scene='STATION'; E.stop(); this._upStn(); show('s-station');
+  },
+  goSurface() {
+    this.scene='SURFACE'; S.dives++; R.reset(); E.initSurface(); show('s-surf-hud'); E.start();
+  },
+  goSpace() {
+    this.scene='SPACE'; R.reset(); E.initSpace(); show('s-space-hud'); E.start();
+  },
+  missionReturn(crystalGot,infGain,kills) {
+    E.stop();
+    S.inv.crystal+=crystalGot; S.totalCrystal+=crystalGot; S.totalKills+=kills;
+    S.infection=clamp(S.infection+infGain,0,100);
+    S.life=clamp(100-S.infection*0.65,5,100);
+    S.day++;
+    if(S.logIdx<LORE.length) S.logs.unshift(LORE[S.logIdx++]);
+    if(S.logs.length>4) S.logs.pop();
+    if(S.infection>=100){this.over('Contaminação total. Suporte de vida comprometido.','bio');return;}
+    this.goStation();
+  },
+  evaReturn(kills) {
+    E.stop(); S.totalKills+=kills;
+    S.hull=clamp(S.hull+15,0,100);
+    S.infection=clamp(S.infection-18,0,100);
+    S.life=clamp(100-S.infection*0.65,5,100);
+    S.day++; this.goStation();
+  },
+  repair() { if(S.inv.crystal<2)return; S.inv.crystal-=2; S.inv.kits=clamp(S.inv.kits+1,0,6); this._upStn(); },
+  purge()   { if(S.inv.crystal<3)return; S.inv.crystal-=3; S.infection=clamp(S.infection-25,0,100); S.life=clamp(100-S.infection*0.65,5,100); this._upStn(); },
+  reinforceHull(){ if(S.inv.crystal<4)return; S.inv.crystal-=4; S.hull=clamp(S.hull+30,0,100); this._upStn(); },
+  buyAmmo(){ if(S.inv.crystal<1)return; S.inv.crystal-=1; S.inv.ammo=clamp(S.inv.ammo+15,0,60); this._upStn(); },
+  over(cause,type='default') {
+    E.stop();
+    setText('o-title',OVER_TITLES[Math.floor(Math.random()*OVER_TITLES.length)]);
+    setText('o-day',String(S.day)); setText('o-dives',String(S.dives));
+    setText('o-crystal',S.totalCrystal+' un.'); setText('o-kills',String(S.totalKills));
+    setText('o-cause',cause); setText('o-note',OVER_NOTES[type]||OVER_NOTES.default);
+    show('s-over');
+  },
+  _upStn() {
+    const si=clamp(S.infection,0,100);
+    setText('stn-day',`TURNO ${pad(S.day)} — OPERAÇÃO ALFA`);
+    setBar('b-hull',S.hull,S.hull>50?'f-cyan':S.hull>25?'f-amber':'f-red');
+    setText('v-hull',Math.round(S.hull)+'%');
+    setBar('b-bio',si,'f-bio');
+    const be=document.getElementById('v-bio'); be.textContent=Math.round(si)+'%';
+    be.style.color=si>60?'var(--red)':si>30?'var(--amber)':'var(--bio)';
+    setBar('b-life',S.life,S.life>60?'f-green':S.life>30?'f-amber':'f-red');
+    setText('v-life',Math.round(S.life)+'%');
+    setText('inv-crystal',S.inv.crystal); setText('inv-kits',S.inv.kits);
+    setText('inv-kills',S.totalKills);
+    setText('r-day',pad(S.day)); setText('r-dives',S.dives);
+    setText('r-total',S.totalCrystal+' un.');
+    setText('m-brief',BRIEFS[Math.min(S.day-1,BRIEFS.length-1)]);
+    const ni=Math.min(Math.floor(si/22),NADIR_STATUS.length-1);
+    const ne=document.getElementById('nadir-status'); ne.textContent=NADIR_STATUS[ni];
+    ne.style.color=si>44?(si>66?'var(--red)':'var(--amber)'):'var(--dim)';
+    const lc=document.getElementById('log-container'); lc.innerHTML='';
+    const ls=S.logs.length?S.logs:[LORE[0]];
+    ls.slice(0,4).forEach(l=>{ const e=document.createElement('div'); e.className='log-entry '+(l.c||''); e.textContent=l.t; lc.appendChild(e); });
+    disableBtn('btn-repair',S.inv.crystal<2); disableBtn('btn-purge',S.inv.crystal<3);
+    disableBtn('btn-hull',S.inv.crystal<4); disableBtn('btn-ammo',S.inv.crystal<1);
+  }
+};
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('c').style.display=(id==='s-surf-hud'||id==='s-space-hud')?'block':'none';
+}
+function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function setBar(id,p,cls){const e=document.getElementById(id);if(!e)return;e.style.width=clamp(p,0,100)+'%';e.className='bar-fill '+cls;}
+function disableBtn(id,d){const e=document.getElementById(id);if(e)e.disabled=d;}
+function pad(n){return String(n).padStart(2,'0');}
+function flashFx(c){const e=document.getElementById('flash');e.style.background=c;e.style.opacity='1';setTimeout(()=>e.style.opacity='0',90);}
+
+/* ══════════════════════════════════════════════════════
+   ENTITIES
+══════════════════════════════════════════════════════ */
+
+class Bullet {
+  constructor(x,y,dx,dy,isPlayer){
+    this.x=x;this.y=y;
+    const spd=isPlayer?720:380;
+    this.vx=dx*spd; this.vy=dy*spd;
+    this.isPlayer=isPlayer; this.life=1.4; this.dead=false;
+    this.trail=[]; // short trail
+  }
+  update(dt){
+    this.trail.push({x:this.x,y:this.y});
+    if(this.trail.length>5) this.trail.shift();
+    this.x+=this.vx*dt; this.y+=this.vy*dt;
+    this.life-=dt; if(this.life<=0)this.dead=true;
+  }
+  draw(ctx){
+    if(this.dead)return;
+    // Trail
+    for(let i=0;i<this.trail.length;i++){
+      const a=(i/this.trail.length)*0.4;
+      ctx.fillStyle=this.isPlayer?`rgba(0,229,255,${a})`:`rgba(255,80,80,${a})`;
+      ctx.beginPath();ctx.arc(this.trail[i].x,this.trail[i].y,this.isPlayer?2:2.5,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle=this.isPlayer?'#00e5ff':'#ff4444';
+    ctx.beginPath();ctx.arc(this.x,this.y,this.isPlayer?3:3.5,0,Math.PI*2);ctx.fill();
+    // Glow
+    ctx.fillStyle=this.isPlayer?'rgba(0,229,255,0.25)':'rgba(255,50,50,0.25)';
+    ctx.beginPath();ctx.arc(this.x,this.y,7,0,Math.PI*2);ctx.fill();
+  }
+}
+
+/* ── PLAYER ─────────────────────────────────────────── */
+class Astronaut {
+  constructor(x,y){
+    this.x=x;this.y=y;this.vx=0;this.vy=0;this.angle=0;
+    this.drilling=false;this.fireCooldown=0;this.walkT=0;
+    this.hitFlash=0;
+  }
+  update(dt,keys,mx,my,scene){
+    let dx=0,dy=0;
+    if(keys['KeyW']||keys['ArrowUp'])   dy=-1;
+    if(keys['KeyS']||keys['ArrowDown']) dy=1;
+    if(keys['KeyA']||keys['ArrowLeft']) dx=-1;
+    if(keys['KeyD']||keys['ArrowRight'])dx=1;
+    const l=Math.sqrt(dx*dx+dy*dy); if(l>0){dx/=l;dy/=l;}
+    this.angle=Math.atan2(my-this.y,mx-this.x);
+    if(this.fireCooldown>0)this.fireCooldown-=dt;
+    if(this.hitFlash>0)this.hitFlash-=dt;
+    if(scene==='SURFACE'){
+      const spd=this.drilling?40:110;
+      this.x+=dx*spd*dt; this.y+=dy*spd*dt;
+      if(l>0){ this.walkT+=dt*12;
+        if(Math.random()<0.15) E.particles.push({x:this.x+rnd(-6,6),y:this.y+rnd(-6,6),vx:rnd(-8,8),vy:rnd(-8,8),life:rnd(0.2,0.5),color:'rgba(100,140,180,0.4)',size:rnd(1,2),isBubble:false});
+      } else this.walkT=lerp(this.walkT,Math.round(this.walkT/Math.PI)*Math.PI,dt*10);
+    } else {
+      const thrust=190; this.vx+=dx*thrust*dt; this.vy+=dy*thrust*dt;
+      const spd=Math.sqrt(this.vx*this.vx+this.vy*this.vy);
+      if(spd>160){this.vx=this.vx/spd*160;this.vy=this.vy/spd*160;}
+      this.vx*=Math.pow(0.05,dt); this.vy*=Math.pow(0.05,dt);
+      this.x+=this.vx*dt; this.y+=this.vy*dt;
+      if(l>0&&R.fuel>0){
+        R.fuel-=dt*7;
+        if(Math.random()<0.5){
+          const pa=this.angle+Math.PI;
+          E.particles.push({x:this.x+Math.cos(pa)*14,y:this.y+Math.sin(pa)*14,vx:-dx*rnd(20,50)+rnd(-15,15),vy:-dy*rnd(20,50)+rnd(-15,15),life:rnd(0.4,1.0),color:'rgba(180,230,255,0.7)',size:rnd(1.5,3.5),isBubble:true});
+        }
+      }
+    }
+  }
+
+  draw(ctx,scene){
+    ctx.save();
+    ctx.translate(this.x,this.y);
+    ctx.rotate(this.angle+Math.PI/2); // orient forward = right in local space
+
+    const hit=this.hitFlash>0;
+
+    // ── EVA SUIT (orange/olive, matching reference art) ──────
+    // Legs
+    const sw=Math.sin(this.walkT)*7;
+    ctx.fillStyle=hit?'#ff8844':'#4a3c28';
+    ctx.fillRect(-6,8,8,14+sw*0.5); // left leg
+    ctx.fillRect(0,8,8,14-sw*0.5); // right leg
+    // Boot grips
+    ctx.fillStyle='#2a2018';
+    ctx.fillRect(-7,20,9,4); ctx.fillRect(-1,20,9,4);
+
+    // Backpack — large, cylindrical tanks
+    ctx.fillStyle=hit?'#ff8844':'#3a3220';
+    ctx.fillRect(-10,-12,20,20); // main pack
+    // Tank cylinders
+    ctx.fillStyle='#2a2820';
+    ctx.beginPath();ctx.roundRect(-13,-10,6,16,3);ctx.fill();
+    ctx.beginPath();ctx.roundRect(7,-10,6,16,3);ctx.fill();
+    // Tank valve
+    ctx.fillStyle='#ffaa00';ctx.fillRect(-13,-12,6,3);ctx.fillRect(7,-12,6,3);
+    // Tube from tank to suit
+    ctx.strokeStyle='#555540';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(-10,-4);ctx.bezierCurveTo(-18,-4,-18,8,-10,8);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(10,-4);ctx.bezierCurveTo(18,-4,18,8,10,8);ctx.stroke();
+
+    // Main suit torso
+    ctx.fillStyle=hit?'#ff8844':'#6a5835';
+    ctx.beginPath();ctx.roundRect(-8,-8,16,18,4);ctx.fill();
+    // Orange chest panel
+    ctx.fillStyle=hit?'#ffaa44':'#cc6620';
+    ctx.beginPath();ctx.roundRect(-5,-6,10,10,3);ctx.fill();
+    // Status lights on chest
+    ctx.fillStyle='#00e886';ctx.beginPath();ctx.arc(-3,-4,1.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ffaa00';ctx.beginPath();ctx.arc(0,-4,1.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=S.infection>50?'#ff2244':'#00c8e8';ctx.beginPath();ctx.arc(3,-4,1.5,0,Math.PI*2);ctx.fill();
+
+    // Shoulder pads
+    ctx.fillStyle='#504530';
+    ctx.beginPath();ctx.ellipse(-10,-2,6,5,0.3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(10,-2,6,5,-0.3,0,Math.PI*2);ctx.fill();
+
+    // Arm with weapon extended forward (world-rotated already, so "forward" = up in local)
+    // Arm going up (forward direction)
+    ctx.fillStyle='#6a5835';
+    ctx.beginPath();ctx.moveTo(-5,-8);ctx.lineTo(-9,-22);ctx.lineTo(-4,-22);ctx.lineTo(0,-10);ctx.fill();
+    ctx.beginPath();ctx.moveTo(5,-8);ctx.lineTo(9,-22);ctx.lineTo(4,-22);ctx.lineTo(0,-10);ctx.fill();
+
+    // Gun / tool extending forward
+    ctx.fillStyle='#222';
+    ctx.beginPath();ctx.roundRect(-4,-28,8,12,2);ctx.fill();
+    ctx.fillStyle='#444';ctx.fillRect(-2,-32,4,6);
+    // Barrel flash if recently fired
+    if(this.fireCooldown>0.1){
+      ctx.fillStyle='rgba(0,229,255,0.9)';
+      ctx.beginPath();ctx.ellipse(0,-33,4,7,0,0,Math.PI*2);ctx.fill();
+    }
+    if(this.drilling){
+      ctx.fillStyle='rgba(255,170,0,0.85)';
+      ctx.beginPath();ctx.ellipse(0,-33,5,9,0,0,Math.PI*2);ctx.fill();
+    }
+
+    // Helmet — round, with visor
+    ctx.fillStyle=hit?'#ffcc88':'#d4c4a0';
+    ctx.beginPath();ctx.arc(0,-4,12,0,Math.PI*2);ctx.fill();
+    // Visor (dark, facing forward = up)
+    ctx.fillStyle='#0d1620';
+    ctx.beginPath();ctx.ellipse(0,-6,9,6,0,-0.8,Math.PI+0.8);ctx.fill();
+    // Orange visor rim
+    ctx.strokeStyle='#cc6620';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.ellipse(0,-6,9,6,0,-0.8,Math.PI+0.8);ctx.stroke();
+    // Visor reflection
+    ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(-4,-8,4,-0.8,0.2);ctx.stroke();
+    // Helmet light (headlamp)
+    ctx.fillStyle='rgba(255,255,220,0.9)';
+    ctx.beginPath();ctx.arc(0,-15,3,0,Math.PI*2);ctx.fill();
+    if(!hit){
+      ctx.fillStyle='rgba(255,255,200,0.15)';
+      ctx.beginPath();ctx.arc(0,-15,10,0,Math.PI*2);ctx.fill();
+    }
+
+    ctx.restore();
+  }
+}
+
+/* ── ALLY BOT ───────────────────────────────────────── */
+class AllyBot {
+  constructor(x,y){this.x=x;this.y=y;this.vx=0;this.vy=0;this.angle=0;this.fireCooldown=0;this.walkT=0;}
+  update(dt,scene){
+    if(!E.player)return;
+    let dx=0,dy=0,moving=false;
+    // Find nearest enemy
+    let target=null,minD=999999;
+    E.enemies.forEach(e=>{if(e.dead)return;const d=d2(this.x,this.y,e.x,e.y);if(d<minD){minD=d;target=e;}});
+    if(target&&minD<380){
+      this.angle=Math.atan2(target.y-this.y,target.x-this.x);
+      if(this.fireCooldown<=0&&R.ammo>0){
+        this.fireCooldown=0.6;
+        const [ddx,ddy]=norm(target.x-this.x,target.y-this.y);
+        E.bullets.push(new Bullet(this.x,this.y,ddx,ddy,true));
+        R.ammo=Math.max(0,R.ammo-1);
+      }
+      if(minD>90){dx=Math.cos(this.angle);dy=Math.sin(this.angle);moving=true;}
+    } else {
+      const pd=d2(this.x,this.y,E.player.x,E.player.y);
+      if(pd>90){dx=E.player.x-this.x;dy=E.player.y-this.y;moving=true;const[nx,ny]=norm(dx,dy);dx=nx;dy=ny;this.angle=Math.atan2(dy,dx);}
+    }
+    if(this.fireCooldown>0)this.fireCooldown-=dt;
+    if(scene==='SURFACE'){
+      const spd=moving?80:0;this.x+=dx*spd*dt;this.y+=dy*spd*dt;
+      if(moving)this.walkT+=dt*12;else this.walkT=lerp(this.walkT,Math.round(this.walkT/Math.PI)*Math.PI,dt*10);
+    } else {
+      const thrust=140; this.vx+=dx*thrust*dt;this.vy+=dy*thrust*dt;
+      const spd=Math.sqrt(this.vx*this.vx+this.vy*this.vy);if(spd>120){this.vx=this.vx/spd*120;this.vy=this.vy/spd*120;}
+      this.vx*=Math.pow(0.05,dt);this.vy*=Math.pow(0.05,dt);
+      this.x+=this.vx*dt;this.y+=this.vy*dt;
+    }
+  }
+  draw(ctx,scene){
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle+Math.PI/2);
+    // Simpler green/teal suit
+    ctx.fillStyle='#1a3a2a';ctx.fillRect(-6,8,8,13);ctx.fillRect(0,8,8,13);
+    ctx.fillStyle='#2a4a3a';ctx.fillRect(-9,-10,18,18);
+    ctx.fillStyle='#3a8c6c';ctx.beginPath();ctx.arc(0,-4,10,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#0a1a12';ctx.beginPath();ctx.ellipse(0,-6,7.5,5,0,-0.8,Math.PI+0.8);ctx.fill();
+    ctx.strokeStyle='#00ffcc';ctx.lineWidth=1.2;ctx.beginPath();ctx.ellipse(0,-6,7.5,5,0,-0.8,Math.PI+0.8);ctx.stroke();
+    // gun
+    ctx.fillStyle='#111';ctx.beginPath();ctx.roundRect(-3,-22,6,10,2);ctx.fill();
+    if(this.fireCooldown>0.3){ctx.fillStyle='rgba(0,255,200,0.85)';ctx.beginPath();ctx.ellipse(0,-24,3,5,0,0,Math.PI*2);ctx.fill();}
+    ctx.restore();
+  }
+}
+
+/* ── ALIEN FISH (massive, scary) ───────────────────── */
+class AlienFish {
+  constructor(x,y){
+    this.x=x;this.y=y;
+    this.hp=55+S.dives*12; this.maxHp=this.hp;
+    this.dead=false; this.corpse=false;
+    this.speed=80+S.dives*8;
+    this.wobble=rnd(0,Math.PI*2);
+    this.angle=0; this.biteCooldown=rnd(0,1.5);
+    this.hitFlash=0; this.sinkT=0;
+    this.sz=rnd(1.0,1.6); // size multiplier for variety
+    // Unique shape
+    this.toothCount=Math.floor(rnd(6,10));
+    this.bioLights=[];
+    for(let i=0;i<Math.floor(rnd(5,10));i++) this.bioLights.push({a:rnd(0,Math.PI*2),r:rnd(0.4,0.9),phase:rnd(0,6)});
+    this.fireTimer=rnd(2,5);
+  }
+  update(dt,px,py){
+    if(this.corpse){this.sinkT+=dt;this.y+=12*dt;this.angle+=0.01;return;}
+    if(this.dead){this.corpse=true;return;}
+    let dx=px-this.x,dy=py-this.y;
+    let dist=Math.sqrt(dx*dx+dy*dy)||1;
+    this.wobble+=dt*22;
+    this.biteCooldown-=dt;
+    this.hitFlash=Math.max(0,this.hitFlash-dt);
+    this.fireTimer-=dt;
+
+    if(dist<500){
+      this.x+=(dx/dist)*this.speed*dt;
+      this.y+=(dy/dist)*this.speed*dt;
+      this.angle=Math.atan2(dy,dx);
+    }
+    // Shoot spines
+    if(this.fireTimer<=0&&dist<280){
+      this.fireTimer=rnd(2.5,4.5);
+      if(E.bullets){
+        const[nx,ny]=norm(dx,dy);
+        E.bullets.push(new Bullet(this.x+nx*30,this.y+ny*30,nx,ny,false));
+        // Spread shot
+        const sa=0.25;
+        E.bullets.push(new Bullet(this.x+nx*30,this.y+ny*30,Math.cos(this.angle+sa),Math.sin(this.angle+sa),false));
+        E.bullets.push(new Bullet(this.x+nx*30,this.y+ny*30,Math.cos(this.angle-sa),Math.sin(this.angle-sa),false));
+      }
+    }
+    if(dist<30&&this.biteCooldown<=0){
+      this.biteCooldown=1.2; R.hp-=18;
+      E._spawnBlood(this.x,this.y,8);
+      flashFx('rgba(255,34,68,0.35)');
+      this.x-=(dx/dist)*30;this.y-=(dy/dist)*30;
+      if(R.hp<=0)Game.over('Devorado pelas mandíbulas da fauna abissal.','combat');
+    }
+  }
+  draw(ctx){
+    if(this.corpse){
+      const a=Math.max(0,1-this.sinkT*0.2);
+      ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle+Math.PI*0.5*Math.sin(this.sinkT*0.5));
+      ctx.globalAlpha=a*0.55;
+      this._drawBody(ctx,true);
+      ctx.globalAlpha=1;ctx.restore();return;
+    }
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle);
+    this._drawBody(ctx,false);
+    ctx.restore();
+  }
+  _drawBody(ctx,dead){
+    const sz=this.sz, wag=Math.sin(this.wobble)*12;
+    const hit=this.hitFlash>0;
+    // HP bar
+    if(!dead){
+      const hpPct=this.hp/this.maxHp;
+      ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(-sz*30,-sz*22,sz*60,5);
+      ctx.fillStyle=hpPct>0.5?'#00e886':hpPct>0.25?'#ffaa00':'#ff2244';
+      ctx.fillRect(-sz*30,-sz*22,sz*60*hpPct,5);
+    }
+    // Tail
+    ctx.fillStyle=hit?'#ff6644':'#050f1a';
+    ctx.beginPath();
+    ctx.moveTo(-sz*18,0);
+    ctx.lineTo(-sz*40,-sz*14+wag);
+    ctx.lineTo(-sz*48,wag*1.8);
+    ctx.lineTo(-sz*40,sz*14+wag);
+    ctx.fill();
+    // Dorsal fin
+    ctx.fillStyle=hit?'rgba(255,100,50,0.6)':'rgba(0,40,80,0.7)';
+    ctx.beginPath();ctx.moveTo(-sz*10,-sz*8);ctx.lineTo(sz*5,-sz*22);ctx.lineTo(sz*18,-sz*8);ctx.fill();
+    // Body
+    const bg=ctx.createLinearGradient(-sz*20,0,sz*30,0);
+    bg.addColorStop(0,hit?'#442800':'#020c14');
+    bg.addColorStop(0.5,hit?'#663300':'#041520');
+    bg.addColorStop(1,hit?'#220800':'#010609');
+    ctx.fillStyle=bg;
+    ctx.beginPath();
+    ctx.moveTo(sz*30,0);
+    ctx.bezierCurveTo(sz*30,-sz*16,sz*0,-sz*18,-sz*18,-sz*8);
+    ctx.lineTo(-sz*18,sz*8);
+    ctx.bezierCurveTo(sz*0,sz*18,sz*30,sz*16,sz*30,0);
+    ctx.fill();
+    // Scales texture
+    ctx.strokeStyle=`rgba(${hit?'180,80,20':'0,60,100'},0.3)`;ctx.lineWidth=1;
+    for(let i=0;i<4;i++){
+      const bx=-sz*10+i*sz*10,by=0;
+      ctx.beginPath();ctx.arc(bx,by,sz*8,Math.PI*0.2,Math.PI*0.8);ctx.stroke();
+    }
+    // Pectoral fins
+    ctx.fillStyle=hit?'rgba(180,60,0,0.6)':'rgba(5,30,60,0.7)';
+    ctx.beginPath();ctx.moveTo(sz*5,sz*10);ctx.lineTo(-sz*8,sz*25);ctx.lineTo(-sz*14,sz*10);ctx.fill();
+    ctx.beginPath();ctx.moveTo(sz*5,-sz*10);ctx.lineTo(-sz*8,-sz*25);ctx.lineTo(-sz*14,-sz*10);ctx.fill();
+    // HUGE flat head
+    ctx.fillStyle=hit?'#553300':'#06111c';
+    ctx.beginPath();ctx.ellipse(sz*20,0,sz*22,sz*15,0,0,Math.PI*2);ctx.fill();
+    // Underslung jaw
+    ctx.fillStyle=hit?'#442200':'#040e18';
+    ctx.beginPath();ctx.moveTo(sz*40,sz*5);ctx.bezierCurveTo(sz*20,sz*22,-sz*10,sz*18,-sz*18,sz*8);ctx.lineTo(-sz*18,sz*4);ctx.bezierCurveTo(-sz*5,sz*8,sz*20,sz*8,sz*38,sz*1);ctx.fill();
+    // TEETH — upper row
+    ctx.fillStyle=dead?'#aaaaaa':'#f0f0f0';
+    for(let i=0;i<this.toothCount;i++){
+      const tx=sz*40-i*sz*(40/(this.toothCount)),ty1=-sz*3,ty2=-sz*10-sz*3*Math.abs(Math.sin(i));
+      ctx.beginPath();ctx.moveTo(tx,ty1);ctx.lineTo(tx-sz*2,ty2);ctx.lineTo(tx+sz*2,ty2);ctx.fill();
+    }
+    // Lower teeth
+    ctx.fillStyle=dead?'#999999':'#e8e8e8';
+    for(let i=0;i<this.toothCount-2;i++){
+      const tx=sz*38-i*sz*(38/(this.toothCount-2)),ty1=sz*4,ty2=sz*10+sz*3*Math.abs(Math.sin(i+0.5));
+      ctx.beginPath();ctx.moveTo(tx,ty1);ctx.lineTo(tx-sz*2,ty2);ctx.lineTo(tx+sz*2,ty2);ctx.fill();
+    }
+    // Multiple RED eyes
+    for(let e=0;e<4;e++){
+      const ex=sz*28-(e%2)*sz*10+Math.floor(e/2)*sz*4;
+      const ey=(e<2?-1:1)*(sz*7+(e%2)*sz*2);
+      // Eye glow
+      ctx.fillStyle=dead?'rgba(80,0,0,0.4)':`rgba(255,0,50,${0.15+Math.sin(this.wobble*0.5+e)*0.1})`;
+      ctx.beginPath();ctx.arc(ex,ey,sz*6,0,Math.PI*2);ctx.fill();
+      // Eye iris
+      ctx.fillStyle=dead?'#330000':'#cc0022';
+      ctx.beginPath();ctx.arc(ex,ey,sz*3.5,0,Math.PI*2);ctx.fill();
+      // Eye pupil
+      ctx.fillStyle=dead?'#110000':'#ff0044';
+      ctx.beginPath();ctx.arc(ex,ey,sz*2,0,Math.PI*2);ctx.fill();
+      // Catchlight
+      if(!dead){ctx.fillStyle='rgba(255,200,200,0.6)';ctx.beginPath();ctx.arc(ex+sz,ey-sz,sz*0.7,0,Math.PI*2);ctx.fill();}
+    }
+    // Bioluminescent lateral line
+    this.bioLights.forEach(bl=>{
+      const bx=Math.cos(bl.a)*sz*bl.r*22;
+      const by=Math.sin(bl.a)*sz*bl.r*12;
+      const bpulse=dead?0.15:0.3+Math.sin(this.wobble*0.8+bl.phase)*0.2;
+      ctx.fillStyle=`rgba(0,200,150,${bpulse*0.5})`;
+      ctx.beginPath();ctx.arc(bx,by,sz*2.5,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=`rgba(0,255,200,${bpulse})`;
+      ctx.beginPath();ctx.arc(bx,by,sz*1,0,Math.PI*2);ctx.fill();
+    });
+  }
+  takeDmg(dmg){
+    this.hp-=dmg; this.hitFlash=0.2;
+    E._spawnBlood(this.x,this.y,6);
+    if(this.hp<=0){this.dead=true;S.totalKills++;E._spawnBlood(this.x,this.y,18);}
+  }
+}
+
+/* ── NADIR SPAWN (new: cephalopod parasite) ─────────── */
+class NadirSpawn {
+  constructor(x,y){
+    this.x=x;this.y=y;
+    this.hp=28+S.dives*8; this.maxHp=this.hp;
+    this.dead=false; this.corpse=false;
+    this.speed=130+S.dives*12;
+    this.wobble=rnd(0,Math.PI*2);
+    this.angle=0; this.biteCooldown=rnd(0,1);
+    this.hitFlash=0; this.sinkT=0;
+    this.tentCount=Math.floor(rnd(6,9));
+    this.tentPhase=[];
+    for(let i=0;i<this.tentCount;i++) this.tentPhase.push(rnd(0,Math.PI*2));
+    this.fireTimer=rnd(1.5,3.5);
+  }
+  update(dt,px,py){
+    if(this.corpse){this.sinkT+=dt;this.y-=20*dt;this.angle+=0.02;return;} // floats UP (lighter)
+    if(this.dead){this.corpse=true;return;}
+    this.wobble+=dt*18; this.hitFlash=Math.max(0,this.hitFlash-dt);
+    this.fireTimer-=dt;
+    let dx=px-this.x,dy=py-this.y;
+    let dist=Math.sqrt(dx*dx+dy*dy)||1;
+    if(dist<380){
+      this.x+=(dx/dist)*this.speed*dt;
+      this.y+=(dy/dist)*this.speed*dt;
+      this.angle=Math.atan2(dy,dx);
+    }
+    // Spit acid
+    if(this.fireTimer<=0&&dist<200){
+      this.fireTimer=rnd(2,4);
+      if(E.bullets){
+        const[nx,ny]=norm(dx,dy);
+        E.bullets.push(new Bullet(this.x+nx*22,this.y+ny*22,nx,ny,false));
+      }
+    }
+    if(dist<22&&this.biteCooldown<=0){
+      this.biteCooldown=0.9; R.hp-=12;
+      flashFx('rgba(180,60,150,0.25)');
+      E._spawnParts(this.x,this.y,'rgba(200,50,180,0.7)',5,'SURFACE');
+      this.x-=(dx/dist)*20;this.y-=(dy/dist)*20;
+      if(R.hp<=0)Game.over('Assimilado pelos esporos do Nadir-Spawn.','bio');
+    }
+  }
+  draw(ctx){
+    if(this.corpse){
+      const a=Math.max(0,1-this.sinkT*0.15);
+      ctx.save();ctx.translate(this.x,this.y);ctx.globalAlpha=a*0.5;
+      ctx.rotate(this.angle);this._drawBody(ctx,true);
+      ctx.globalAlpha=1;ctx.restore();return;
+    }
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle);
+    this._drawBody(ctx,false);ctx.restore();
+  }
+  _drawBody(ctx,dead){
+    const hit=this.hitFlash>0;
+    // HP bar
+    if(!dead){
+      const hp=this.hp/this.maxHp;
+      ctx.fillStyle='rgba(0,0,0,0.4)';ctx.fillRect(-25,-30,50,4);
+      ctx.fillStyle=hp>0.5?'#cc44ff':hp>0.25?'#ffaa00':'#ff2244';
+      ctx.fillRect(-25,-30,50*hp,4);
+    }
+    // Tentacles (drawn behind body)
+    for(let i=0;i<this.tentCount;i++){
+      const ba=(i/this.tentCount)*Math.PI*2;
+      const wiggle=Math.sin(this.wobble*1.2+this.tentPhase[i])*0.4;
+      const ta=ba+wiggle;
+      const len=28+Math.sin(this.wobble+i)*8;
+      ctx.strokeStyle=hit?`rgba(255,100,60,0.7)`:dead?`rgba(80,0,80,0.4)`:`rgba(${100+i*10},20,${140+i*8},0.7)`;
+      ctx.lineWidth=3.5-i*0.2;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(Math.cos(ba)*8,Math.sin(ba)*8);
+      ctx.quadraticCurveTo(Math.cos(ta+0.5)*len*0.5,Math.sin(ta+0.5)*len*0.5,Math.cos(ta)*len,Math.sin(ta)*len);
+      ctx.stroke();
+      // Sucker at tip
+      ctx.fillStyle=hit?'rgba(255,80,40,0.5)':dead?'rgba(60,0,60,0.3)':`rgba(180,20,200,0.55)`;
+      ctx.beginPath();ctx.arc(Math.cos(ta)*len,Math.sin(ta)*len,2.5,0,Math.PI*2);ctx.fill();
+    }
+    // Mantle body (dome)
+    const mg=ctx.createRadialGradient(0,-4,2,0,-2,16);
+    mg.addColorStop(0,hit?'#ff8844':dead?'#220022':'#6a0a8a');
+    mg.addColorStop(0.6,hit?'#cc4420':dead?'#110011':'#3a0550');
+    mg.addColorStop(1,'rgba(20,0,30,0)');
+    ctx.fillStyle=mg;
+    ctx.beginPath();ctx.ellipse(0,-2,18,14,0,0,Math.PI*2);ctx.fill();
+    // Mantle pattern
+    ctx.strokeStyle=hit?'rgba(255,150,80,0.4)':dead?'rgba(100,0,100,0.2)':`rgba(200,80,255,0.3)`;ctx.lineWidth=1;
+    for(let r=4;r<14;r+=4){ctx.beginPath();ctx.arc(0,-2,r,0,Math.PI*2);ctx.stroke();}
+    // Central eye cluster
+    const eyeColors=dead?['#220022','#110011','#330033']:['#ff00cc','#dd00aa','#ff44ee'];
+    eyeColors.forEach((ec,i)=>{
+      const ex=(-1+i)*5,ey=-4;
+      ctx.fillStyle=dead?'rgba(80,0,80,0.3)':'rgba(255,0,200,0.2)';
+      ctx.beginPath();ctx.arc(ex,ey,6,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=ec;ctx.beginPath();ctx.arc(ex,ey,3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(255,200,255,0.5)';ctx.beginPath();ctx.arc(ex-1,ey-1,1,0,Math.PI*2);ctx.fill();
+    });
+    // Bioluminescent rim
+    if(!dead){
+      const br=0.4+Math.sin(this.wobble*0.9)*0.2;
+      ctx.fillStyle=`rgba(220,80,255,${br*0.3})`;
+      ctx.beginPath();ctx.arc(0,-2,20,0,Math.PI*2);ctx.fill();
+    }
+  }
+  takeDmg(dmg){
+    this.hp-=dmg; this.hitFlash=0.18;
+    E._spawnBlood(this.x,this.y,5);
+    if(this.hp<=0){this.dead=true;S.totalKills++;E._spawnBlood(this.x,this.y,14);}
+  }
+}
+
+/* ── ABYSSAL LEVIATHAN (boss-class) ─────────────────── */
+class AbyssalLeviathan {
+  constructor(x,y){
+    this.x=x;this.y=y;
+    this.hp=200+S.dives*30; this.maxHp=this.hp;
+    this.dead=false; this.corpse=false;
+    this.speed=65+S.dives*8;
+    this.wobble=rnd(0,Math.PI*2); this.angle=0;
+    this.biteCooldown=0; this.hitFlash=0; this.sinkT=0;
+    this.fireTimer=rnd(1,3);
+  }
+  update(dt){
+    if(this.corpse){this.sinkT+=dt;this.y+=18*dt;this.angle+=0.005;return;}
+    if(this.dead){this.corpse=true;return;}
+    this.wobble+=dt*12; this.hitFlash=Math.max(0,this.hitFlash-dt);
+    this.fireTimer-=dt;
+    let distSub=d2(this.x,this.y,512,288);
+    let distPl=d2(this.x,this.y,E.player.x,E.player.y);
+    let tx,ty;
+    if(distPl<220){tx=E.player.x;ty=E.player.y;}
+    else{tx=512;ty=288;}
+    let dx=tx-this.x,dy=ty-this.y;
+    let dist=Math.sqrt(dx*dx+dy*dy)||1;
+    this.angle=Math.atan2(dy,dx);
+    const atRange=tx===E.player.x?32:140;
+    if(dist>atRange){this.x+=(dx/dist)*this.speed*dt;this.y+=(dy/dist)*this.speed*dt;}
+    else{
+      this.biteCooldown-=dt;
+      if(this.biteCooldown<=0){
+        this.biteCooldown=1.5;
+        if(tx===E.player.x){R.hp-=25;flashFx('rgba(255,34,68,0.4)');E._spawnBlood(E.player.x,E.player.y,10);if(R.hp<=0)Game.over('Estraçalhado pelo Leviatã Classe-3.','combat');}
+        else{S.hull-=2.5;flashFx('rgba(255,34,68,0.12)');E._spawnParts(this.x+Math.cos(this.angle)*30,this.y+Math.sin(this.angle)*30,'#ff3322',6,'SPACE');if(S.hull<=0)Game.over('O casco do Khepri-9 cedeu às mandíbulas dos Leviatãs.','hull');}
+      }
+    }
+    // Shoot bone shards
+    if(this.fireTimer<=0&&dist<360){
+      this.fireTimer=rnd(2,4);
+      for(let i=-1;i<=1;i++){
+        const sa=this.angle+i*0.3;
+        E.bullets.push(new Bullet(this.x+Math.cos(this.angle)*40,this.y+Math.sin(this.angle)*40,Math.cos(sa),Math.sin(sa),false));
+      }
+    }
+  }
+  draw(ctx){
+    if(this.corpse){
+      const a=Math.max(0,1-this.sinkT*0.12);
+      ctx.save();ctx.translate(this.x,this.y);ctx.globalAlpha=a*0.5;ctx.rotate(this.angle+Math.PI*0.3*Math.sin(this.sinkT));
+      this._drawBody(ctx,true);ctx.globalAlpha=1;ctx.restore();return;
+    }
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle);
+    this._drawBody(ctx,false);ctx.restore();
+  }
+  _drawBody(ctx,dead){
+    const wag=Math.sin(this.wobble)*14,hit=this.hitFlash>0;
+    // HP bar
+    if(!dead){
+      const hp=this.hp/this.maxHp;
+      ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(-60,-38,120,6);
+      ctx.fillStyle=hp>0.5?'#ff2244':hp>0.25?'#ffaa00':'#fff';
+      ctx.fillRect(-60,-38,120*hp,6);
+      ctx.strokeStyle='rgba(255,34,68,0.3)';ctx.lineWidth=1;ctx.strokeRect(-60,-38,120,6);
+    }
+    // Long serpentine body
+    ctx.fillStyle=hit?'#443300':'#05100a';
+    ctx.beginPath();
+    ctx.moveTo(30,0);
+    ctx.lineTo(-15,16);ctx.lineTo(-50,12+wag);ctx.lineTo(-80,wag*1.4);ctx.lineTo(-110,wag*1.8);
+    ctx.lineTo(-80,-12+wag);ctx.lineTo(-50,-12+wag);ctx.lineTo(-15,-16);
+    ctx.fill();
+    // Spine ridges along body
+    ctx.strokeStyle=hit?'rgba(200,100,0,0.5)':'rgba(0,80,40,0.5)';ctx.lineWidth=2;
+    for(let i=0;i<5;i++){
+      const bx=-15-i*18,by=-14+wag*(i*0.3);
+      ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx-4,by-10);ctx.lineTo(bx+4,by);ctx.stroke();
+    }
+    // Tail fin — forked
+    ctx.fillStyle=hit?'rgba(180,60,0,0.7)':'rgba(0,60,30,0.8)';
+    ctx.beginPath();ctx.moveTo(-105,wag*1.8);ctx.lineTo(-130,-22+wag*2);ctx.lineTo(-120,wag*1.8);ctx.fill();
+    ctx.beginPath();ctx.moveTo(-105,wag*1.8);ctx.lineTo(-130,22+wag*2);ctx.lineTo(-120,wag*1.8);ctx.fill();
+    // Dorsal fin
+    ctx.fillStyle=hit?'rgba(200,80,0,0.5)':'rgba(0,80,40,0.5)';
+    ctx.beginPath();ctx.moveTo(-20,-16+wag*0.2);ctx.lineTo(0,-38);ctx.lineTo(24,-16);ctx.fill();
+    // Huge head
+    ctx.fillStyle=hit?'#662200':'#061610';
+    ctx.beginPath();ctx.ellipse(20,0,38,25,0,0,Math.PI*2);ctx.fill();
+    // Brow ridge
+    ctx.fillStyle=hit?'#552200':'#041008';
+    ctx.beginPath();ctx.moveTo(50,-12);ctx.bezierCurveTo(35,-28,8,-28,-10,-10);ctx.lineTo(-10,-6);ctx.bezierCurveTo(8,-18,35,-18,50,-6);ctx.fill();
+    // MASSIVE jaw
+    ctx.fillStyle=hit?'#441100':'#030c08';
+    ctx.beginPath();ctx.moveTo(55,8);ctx.bezierCurveTo(30,30,-12,26,-15,14);ctx.lineTo(-15,8);ctx.bezierCurveTo(-10,14,30,16,52,4);ctx.fill();
+    // Upper teeth — large, irregular
+    ctx.fillStyle=dead?'#999':'#f5f5f5';
+    for(let i=0;i<8;i++){
+      const tx=50-i*8.5, ty1=-6, ty2=-18-Math.abs(Math.sin(i*1.3))*10;
+      ctx.beginPath();ctx.moveTo(tx,ty1);ctx.lineTo(tx-3.5,ty2);ctx.lineTo(tx+3.5,ty2);ctx.fill();
+    }
+    // Lower teeth
+    ctx.fillStyle=dead?'#888':'#e8e8e8';
+    for(let i=0;i<7;i++){
+      const tx=48-i*8, ty1=10, ty2=22+Math.abs(Math.sin(i*1.1+0.5))*8;
+      ctx.beginPath();ctx.moveTo(tx,ty1);ctx.lineTo(tx-3,ty2);ctx.lineTo(tx+3,ty2);ctx.fill();
+    }
+    // 6 RED EYES — menacing array
+    const eyePos=[{x:38,y:-10},{x:28,y:-16},{x:18,y:-14},{x:38,y:8},{x:28,y:14},{x:18,y:12}];
+    eyePos.forEach((ep,i)=>{
+      ctx.fillStyle=dead?'rgba(80,0,0,0.3)':`rgba(255,0,50,${0.12+Math.sin(this.wobble*0.7+i)*0.08})`;
+      ctx.beginPath();ctx.arc(ep.x,ep.y,9,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=dead?'#200000':'#880022';ctx.beginPath();ctx.arc(ep.x,ep.y,5.5,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=dead?'#100000':'#ff0044';ctx.beginPath();ctx.arc(ep.x,ep.y,3.5,0,Math.PI*2);ctx.fill();
+      if(!dead){ctx.fillStyle='rgba(255,180,180,0.7)';ctx.beginPath();ctx.arc(ep.x+1.5,ep.y-1.5,1.2,0,Math.PI*2);ctx.fill();}
+    });
+    // Bioluminescent organ on head
+    if(!dead){
+      const bp=0.4+Math.sin(this.wobble*0.6)*0.25;
+      ctx.fillStyle=`rgba(0,220,120,${bp*0.3})`;ctx.beginPath();ctx.ellipse(10,0,25,18,0,0,Math.PI*2);ctx.fill();
+      for(let bi=0;bi<6;bi++){
+        const bax=rnd(-18,35),bay=rnd(-18,18);
+        ctx.fillStyle=`rgba(0,255,150,${bp*0.7})`;ctx.beginPath();ctx.arc(bax,bay,1.5,0,Math.PI*2);ctx.fill();
+      }
+    }
+  }
+  takeDmg(dmg){
+    this.hp-=dmg; this.hitFlash=0.25;
+    E._spawnBlood(this.x,this.y,8);
+    if(this.hp<=0){this.dead=true;S.totalKills++;E._spawnBlood(this.x,this.y,25);}
+  }
+}
+
+/* ── CRYSTAL NODE ─────────────────────────────────────── */
+class CrystalNode {
+  constructor(x,y){this.x=x;this.y=y;this.integrity=100;this.depleted=false;this.verts=this._mkV();this.t=Math.random()*100;}
+  _mkV(){const p=[];const s=Math.floor(rnd(6,10));for(let i=0;i<s;i++)p.push({a:(i/s)*Math.PI*2,r:rnd(14,26)});return p;}
+  draw(ctx){
+    if(this.depleted)return;
+    this.t+=0.018;
+    const p=this.integrity/100,pulse=1+Math.sin(this.t*2)*0.08;
+    const g=ctx.createRadialGradient(this.x,this.y,2,this.x,this.y,38);
+    g.addColorStop(0,`rgba(0,150,255,${p*0.55})`);g.addColorStop(1,'rgba(0,80,200,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(this.x,this.y,38,0,Math.PI*2);ctx.fill();
+    ctx.save();ctx.translate(this.x,this.y);ctx.scale(pulse,pulse);
+    ctx.beginPath();
+    this.verts.forEach((v,i)=>{const x=Math.cos(v.a)*v.r,y=Math.sin(v.a)*v.r;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.closePath();
+    ctx.fillStyle=`rgba(40,140,255,${p*0.65})`;ctx.fill();
+    ctx.strokeStyle=`rgba(140,215,255,${p*0.9})`;ctx.lineWidth=1.5;ctx.stroke();
+    ctx.strokeStyle=`rgba(180,235,255,${p*0.45})`;ctx.lineWidth=1;
+    for(let i=0;i<4;i++){
+      const v1=this.verts[i%this.verts.length],v2=this.verts[(i+3)%this.verts.length];
+      ctx.beginPath();ctx.moveTo(Math.cos(v1.a)*v1.r*0.25,Math.sin(v1.a)*v1.r*0.25);ctx.lineTo(Math.cos(v2.a)*v2.r,Math.sin(v2.a)*v2.r);ctx.stroke();
+    }
+    ctx.fillStyle=`rgba(210,245,255,${p*0.9})`;ctx.beginPath();ctx.arc(0,0,5*p,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* ── BIOFILM ──────────────────────────────────────────── */
+class Biofilm {
+  constructor(x,y,sz,type='surface'){
+    this.x=x;this.y=y;this.sz=sz;this.hp=100;this.dead=false;this.type=type;this.t=Math.random()*100;
+    this.vx=rnd(-5,5);this.vy=rnd(-5,5);
+    this.pts=[];for(let i=0;i<7;i++)this.pts.push({da:rnd(-0.35,0.35),dr:rnd(0.75,1.25)});
+  }
+  update(dt){this.t+=dt;this.x+=this.vx*dt;this.y+=this.vy*dt;this.vx*=Math.pow(0.3,dt);this.vy*=Math.pow(0.3,dt);}
+  draw(ctx){
+    if(this.dead)return;
+    const pulse=Math.sin(this.t*1.4)*0.15+0.85,a=(this.hp/100)*0.72,segs=this.pts.length,sz=this.sz;
+    const g=ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,sz*1.8);
+    g.addColorStop(0,`rgba(45,204,112,${a*0.22})`);g.addColorStop(1,'rgba(45,204,112,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(this.x,this.y,sz*1.8,0,Math.PI*2);ctx.fill();
+    ctx.save();ctx.translate(this.x,this.y);ctx.scale(pulse,1/pulse*0.95);
+    ctx.beginPath();
+    const ba=this.t*0.08;
+    for(let i=0;i<=segs;i++){const idx=i%segs,an=(idx/segs)*Math.PI*2+ba+this.pts[idx].da,r=sz*this.pts[idx].dr;i===0?ctx.moveTo(Math.cos(an)*r,Math.sin(an)*r):ctx.lineTo(Math.cos(an)*r,Math.sin(an)*r);}
+    ctx.closePath();ctx.fillStyle=`rgba(15,55,35,${a})`;ctx.fill();
+    ctx.strokeStyle=`rgba(45,204,112,${a*0.45})`;ctx.lineWidth=0.8;
+    for(let i=0;i<4;i++){const a1=(i/4)*Math.PI*2;ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(Math.cos(a1+0.4)*sz*0.55,Math.sin(a1+0.4)*sz*0.55,Math.cos(a1+1.1)*sz*0.9,Math.sin(a1+1.1)*sz*0.9);ctx.stroke();}
+    ctx.fillStyle=`rgba(45,204,112,${a*0.55})`;ctx.beginPath();ctx.arc(0,0,sz*0.28*pulse,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   ENGINE
+══════════════════════════════════════════════════════ */
+const E = {
+  canvas:null,ctx:null,raf:null,t0:0,
+  keys:{},mx:0,my:0,mwx:0,mwy:0,mdown:false,mprev:false,
+  camX:0,camY:0,
+  player:null,allies:[],
+  enemies:[],bullets:[],crystalNodes:[],biofilms:[],
+  particles:[],bubbles:[],cracks:[],
+  WW:2400,WH:1200,
+  scannerTimer:0,waveKills:0,
+  lightCanvas:null,lightCtx:null,
+  globalT:0,
+
+  init(){
+    this.canvas=document.getElementById('c');
+    this.ctx=this.canvas.getContext('2d');
+    this.canvas.width=1024;this.canvas.height=576;
+    document.addEventListener('keydown',e=>{
+      this.keys[e.code]=true;
+      if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
+      if(e.code==='KeyF'&&(Game.scene==='SURFACE'||Game.scene==='SPACE')){this.scannerTimer=2.5;this._showScanner();}
+      if(e.code==='KeyE'&&Game.scene==='SURFACE'&&S.inv.kits>0&&R.hp<100){S.inv.kits--;R.hp=Math.min(100,R.hp+35);flashFx('rgba(0,220,100,0.15)');}
+    });
+    document.addEventListener('keyup',e=>this.keys[e.code]=false);
+    this.canvas.addEventListener('mousemove',e=>{const r=this.canvas.getBoundingClientRect();this.mx=(e.clientX-r.left)*(this.canvas.width/r.width);this.my=(e.clientY-r.top)*(this.canvas.height/r.height);});
+    this.canvas.addEventListener('mousedown',()=>this.mdown=true);
+    this.canvas.addEventListener('mouseup',()=>this.mdown=false);
+    for(let i=0;i<200;i++) this.bubbles.push({x:rnd(0,2400),y:rnd(0,1200),s:rnd(1,4),speed:rnd(18,65),offset:rnd(0,10)});
+    this.canvas.style.display='none';
+  },
+
+  initSurface(){
+    this.player=new Astronaut(this.WW*0.5,this.WH*0.5);
+    this.camX=0;this.camY=0;
+    this.allies=[new AllyBot(this.WW*0.5+50,this.WH*0.5+50)];
+    this.crystalNodes=[];
+    for(let gx=0;gx<6;gx++) for(let gy=0;gy<3;gy++)
+      this.crystalNodes.push(new CrystalNode(rnd(180+gx*360,360+gx*360),rnd(240+gy*280,420+gy*280)));
+    this.biofilms=[];
+    for(let i=0;i<Math.max(2,Math.floor(S.infection/16)+1);i++)
+      this.biofilms.push(new Biofilm(rnd(150,this.WW-150),rnd(250,this.WH-100),rnd(16,34),'surface'));
+    this.cracks=[];
+    for(let i=0;i<55;i++){
+      const pts=[];let cx=rnd(0,this.WW),cy=rnd(200,this.WH),a=rnd(0,Math.PI*2);pts.push({x:cx,y:cy});
+      const steps=Math.floor(rnd(3,10));const sl=rnd(20,160)/steps;
+      for(let j=0;j<steps;j++){a+=rnd(-0.7,0.7);cx+=Math.cos(a)*sl;cy+=Math.sin(a)*sl*0.4;pts.push({x:cx,y:cy});}
+      this.cracks.push({pts,alpha:rnd(0.06,0.28),w:rnd(1,3)});
+    }
+    this._spawnWave();
+    this.particles=[];this.bullets=[];
+  },
+
+  _spawnWave(){
+    this.waveKills=0;
+    const w=R.wave,base=2+S.dives;
+    this.enemies=[];
+    const numFish=Math.ceil(base*0.6)+Math.floor(w*0.8);
+    const numSpawn=Math.ceil(base*0.4)+Math.floor(w*0.6);
+    for(let i=0;i<numFish;i++)
+      this.enemies.push(new AlienFish(rnd(100,this.WW-100),rnd(100,this.WH-100)));
+    for(let i=0;i<numSpawn;i++)
+      this.enemies.push(new NadirSpawn(rnd(100,this.WW-100),rnd(100,this.WH-100)));
+    const wt=document.getElementById('wave-hud');wt.style.display='block';
+    setText('wave-val',`${R.wave}/${R.maxWave}`);
+    setText('hud-wave-txt',`LEITO OCEÂNICO · ONDA ${R.wave}/${R.maxWave}`);
+  },
+
+  initSpace(){
+    this.player=new Astronaut(512,450);
+    this.camX=0;this.camY=0;
+    this.allies=[new AllyBot(572,450)];
+    this.biofilms=[];
+    for(let i=0;i<Math.max(1,Math.floor(S.infection/15)+1);i++){
+      const a=rnd(0,Math.PI*2),r=rnd(28,110);
+      this.biofilms.push(new Biofilm(512+Math.cos(a)*r,288+Math.sin(a)*r*0.4,rnd(14,28),'hull'));
+    }
+    const numLev=1+Math.floor(S.dives/2);
+    this.enemies=[];
+    for(let i=0;i<numLev;i++)
+      this.enemies.push(new AbyssalLeviathan(512+rnd(-650,650),288+rnd(-450,450)));
+    this.particles=[];this.bullets=[];
+    document.getElementById('wave-hud').style.display='none';
+  },
+
+  start(){this.t0=performance.now();this.raf=requestAnimationFrame(t=>this._loop(t));},
+  stop(){if(this.raf){cancelAnimationFrame(this.raf);this.raf=null;}},
+
+  _loop(t){
+    const dt=Math.min((t-this.t0)/1000,0.05);this.t0=t;this.globalT+=dt;
+    this._update(dt);this._draw();
+    this.raf=requestAnimationFrame(ts=>this._loop(ts));
+  },
+
+  _update(dt){
+    const tx=this.player.x-512,ty=this.player.y-288;
+    this.camX+=((tx)-this.camX)*6*dt;
+    this.camY+=((ty)-this.camY)*6*dt;
+    this.mwx=this.mx+this.camX;this.mwy=this.my+this.camY;
+    this.player.update(dt,this.keys,this.mwx,this.mwy,Game.scene);
+    this.allies.forEach(a=>a.update(dt,Game.scene));
+
+    // Update enemies (including corpses)
+    if(Game.scene==='SURFACE')
+      this.enemies.forEach(e=>e.update(dt,this.player.x,this.player.y));
+    else
+      this.enemies.forEach(e=>e.update(dt));
+
+    this.bullets.forEach(b=>b.update(dt));
+    this.bubbles.forEach(b=>{b.y-=b.speed*dt;b.x+=Math.sin(b.y*0.02+b.offset)*0.9;if(b.y<-50){b.y=this.WH+50;b.x=rnd(0,this.WW);}});
+    this.particles=this.particles.filter(p=>{
+      p.x+=p.vx*dt;p.y+=p.vy*dt;
+      if(p.isBubble){p.vy-=100*dt;p.x+=Math.sin(p.life*10)*1.5;}
+      else if(p.isBlood){p.vy+=60*dt;p.vx*=0.97;}
+      else if(Game.scene==='SURFACE'){p.vy+=50*dt;}
+      else{p.vx*=0.94;p.vy*=0.94;}
+      p.life-=dt;return p.life>0;
+    });
+    if(this.scannerTimer>0){this.scannerTimer-=dt;if(this.scannerTimer<=0)document.getElementById('scanner-hud').style.display='none';}
+    this._checkCollisions();
+    if(Game.scene==='SURFACE')this._updateSurface(dt);
+    else if(Game.scene==='SPACE')this._updateSpace(dt);
+    this.mprev=this.mdown;
+  },
+
+  _checkCollisions(){
+    for(let b of this.bullets){
+      if(b.dead)continue;
+      if(b.isPlayer){
+        for(let e of this.enemies){
+          if(e.dead||e.corpse)continue;
+          if(d2(b.x,b.y,e.x,e.y)<(e instanceof AbyssalLeviathan?40:22)){
+            e.takeDmg(22);b.dead=true;
+            this._spawnParts(e.x,e.y,'rgba(255,255,255,0.5)',3,Game.scene);break;
+          }
+        }
+      } else {
+        if(d2(b.x,b.y,this.player.x,this.player.y)<16){
+          b.dead=true;R.hp-=10;this.player.hitFlash=0.2;
+          flashFx('rgba(255,34,68,0.2)');
+          this._spawnBlood(this.player.x,this.player.y,4);
+          if(R.hp<=0)Game.over('Abatido por projetil da fauna abissal.','combat');
+        }
+        // Check ally
+        this.allies.forEach(a=>{
+          if(d2(b.x,b.y,a.x,a.y)<14){b.dead=true;}
+        });
+      }
+    }
+    this.bullets=this.bullets.filter(b=>!b.dead);
+    // Don't remove enemies — keep corpses for visual
+  },
+
+  _spawnParts(x,y,color,n,scene){
+    for(let i=0;i<n;i++) this.particles.push({x,y,vx:rnd(-55,55),vy:scene==='SURFACE'?rnd(-75,-10):rnd(-50,50),life:rnd(0.3,0.7),color,size:rnd(1,3),isBubble:false,isBlood:false});
+  },
+  _spawnBlood(x,y,n){
+    for(let i=0;i<n;i++){
+      const a=rnd(0,Math.PI*2),spd=rnd(30,120);
+      this.particles.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd-40,life:rnd(0.5,1.4),color:`rgba(${180+Math.floor(rnd(0,75))},${Math.floor(rnd(0,25))},${Math.floor(rnd(0,20))},0.9)`,size:rnd(2,5),isBubble:false,isBlood:true});
+    }
+  },
+
+  _showScanner(){
+    const sc=document.getElementById('scanner-hud');sc.style.display='block';
+    const nearBio=this.biofilms.find(b=>!b.dead&&d2(b.x,b.y,this.player.x,this.player.y)<200);
+    const li=Math.round(S.infection+(nearBio?22:0));
+    document.getElementById('sc-reading').textContent=li+'%';
+    const labels=['LIMPO','TRAÇOS','ATIVO','CRÍTICO'];
+    const lColors=['var(--green)','var(--amber)','var(--amber)','var(--red)'];
+    const li2=Math.min(Math.floor(li/25),3);
+    document.getElementById('sc-label').textContent='FENÔMENO NADIR · '+labels[li2];
+    document.getElementById('sc-label').style.color=lColors[li2];
+  },
+
+  _updateSurface(dt){
+    this.player.x=clamp(this.player.x,20,this.WW-20);
+    this.player.y=clamp(this.player.y,220,this.WH-20);
+    R.bat-=dt*(this.player.drilling?2.2:0.35);
+    if(R.bat<=0){Game.over('Sem aquecimento. A pressão de 120atm esmagou o traje.','battery');return;}
+
+    this.biofilms.forEach(b=>{
+      b.update(dt);
+      if(d2(b.x,b.y,this.player.x,this.player.y)<b.sz+12){R.hp-=dt*22;flashFx('rgba(45,204,112,0.1)');if(R.hp<=0){Game.over('Biofilme Nadir penetrou o escafandro.','bio');}}
+    });
+
+    // Shooting
+    this.player.drilling=false;
+    if(this.mdown&&this.player.fireCooldown<=0){
+      const near=this.crystalNodes.find(n=>!n.depleted&&d2(n.x,n.y,this.player.x,this.player.y)<58);
+      if(near){
+        this.player.drilling=true;
+        near.integrity-=dt*42;
+        this._spawnParts(near.x,near.y,'rgba(100,200,255,0.8)',2,'SURFACE');
+        if(Math.random()<0.01) this.biofilms.push(new Biofilm(this.player.x+rnd(-250,250),this.player.y+rnd(-250,250),rnd(16,30),'surface'));
+        if(near.integrity<=0){
+          near.depleted=true;R.crystal++;
+          this._spawnParts(near.x,near.y,'rgba(0,150,255,0.9)',18,'SURFACE');
+          // Check mission complete
+          if(R.crystal>=5){
+            const kills=this.enemies.filter(e=>e.dead||e.corpse).length;
+            Game.missionReturn(R.crystal,8+Math.floor(S.infection*0.1)+Math.floor(Math.random()*8),kills);
+          }
+        }
+      } else if(R.ammo>0){
+        this.player.fireCooldown=0.22;R.ammo--;
+        this.bullets.push(new Bullet(this.player.x,this.player.y,Math.cos(this.player.angle),Math.sin(this.player.angle),true));
+        this.player.x-=Math.cos(this.player.angle)*2;this.player.y-=Math.sin(this.player.angle)*2;
+      }
+    }
+
+    // Check wave clear (all non-corpse enemies dead)
+    const aliveEnemies=this.enemies.filter(e=>!e.dead&&!e.corpse);
+    if(aliveEnemies.length===0&&!R.waveCleared){
+      R.waveCleared=true;
+      if(R.wave<R.maxWave){
+        setTimeout(()=>{R.wave++;R.waveCleared=false;this._spawnWave();},1800);
+      } else {
+        // Final wave cleared — mission success (still need crystals)
+        this._spawnParts(this.player.x,this.player.y,'rgba(0,230,140,0.8)',20,'SURFACE');
+      }
+    }
+
+    // HUD
+    document.getElementById('h-hp').style.width=R.hp+'%';
+    document.getElementById('hv-hp').textContent=Math.ceil(R.hp);
+    document.getElementById('h-bat').style.width=R.bat+'%';
+    document.getElementById('hv-bat').textContent=Math.ceil(R.bat);
+    document.getElementById('h-ammo').style.width=(R.ammo/60*100)+'%';
+    document.getElementById('hv-ammo').textContent=R.ammo;
+    document.getElementById('hv-crystal').textContent=R.crystal+'/5';
+    const hf=document.getElementById('h-hp');hf.className='hud-mini-fill '+(R.hp>50?'f-cyan':R.hp>25?'f-amber':'f-red');
+    // Infection vignette
+    if(S.infection>40){const va=(Math.sin(this.globalT*1.8)*0.5+0.5)*0.1*((S.infection-40)/60);flashFx(`rgba(45,204,112,${va})`);}
+  },
+
+  _updateSpace(dt){
+    this.biofilms.forEach(b=>b.update(dt));
+    this.player.welding=false;
+    if(this.mdown&&this.player.fireCooldown<=0){
+      const nearBio=this.biofilms.find(b=>!b.dead&&d2(b.x,b.y,this.player.x,this.player.y)<b.sz+20);
+      if(nearBio){
+        this.player.welding=true;nearBio.hp-=dt*65;
+        this._spawnParts(nearBio.x,nearBio.y,'rgba(255,150,50,0.8)',3,'SPACE');
+        if(nearBio.hp<=0){nearBio.dead=true;this.biofilms=this.biofilms.filter(b=>!b.dead);}
+      } else if(R.ammo>0){
+        this.player.fireCooldown=0.25;R.ammo--;
+        this.bullets.push(new Bullet(this.player.x,this.player.y,Math.cos(this.player.angle),Math.sin(this.player.angle),true));
+        this.player.vx-=Math.cos(this.player.angle)*35;this.player.vy-=Math.sin(this.player.angle)*35;
+      }
+    }
+    // Ally also shoots
+    this.allies.forEach(a=>{
+      const ae=this.enemies.find(e=>!e.dead&&!e.corpse&&d2(a.x,a.y,e.x,e.y)<300);
+      if(ae&&a.fireCooldown<=0&&R.ammo>0){
+        a.fireCooldown=0.8;R.ammo=Math.max(0,R.ammo-1);
+        const[ddx,ddy]=norm(ae.x-a.x,ae.y-a.y);
+        this.bullets.push(new Bullet(a.x,a.y,ddx,ddy,true));
+      }
+    });
+    // Station boundary
+    const stb=[{x:512,y:288,w:280,h:80},{x:512,y:228,w:80,h:40}];
+    stb.forEach(c=>{
+      const cx2=clamp(this.player.x,c.x-c.w/2,c.x+c.w/2),cy2=clamp(this.player.y,c.y-c.h/2,c.y+c.h/2);
+      if(d2(this.player.x,this.player.y,cx2,cy2)<14){
+        const[nx,ny]=norm(this.player.x-c.x,this.player.y-c.y);
+        this.player.vx=(nx)*65;this.player.vy=(ny)*65;
+        S.hull-=0.4;if(S.hull<=0){Game.over('Colisão com o casco do Khepri-9. Descompressão.','hull');}
+      }
+    });
+    const alive=this.enemies.filter(e=>!e.dead&&!e.corpse).length;
+    if((R.fuel<=0||alive===0)&&this.biofilms.length===0){
+      const kills=this.enemies.filter(e=>e.dead||e.corpse).length;
+      Game.evaReturn(kills);
+    } else if(R.fuel<=0&&alive===0){
+      const kills=this.enemies.filter(e=>e.dead||e.corpse).length;
+      Game.evaReturn(kills);
+    }
+    document.getElementById('h-fuel').style.width=R.fuel+'%';
+    document.getElementById('hv-fuel').textContent=Math.ceil(R.fuel);
+    document.getElementById('h-ammo2').style.width=(R.ammo/60*100)+'%';
+    document.getElementById('hv-ammo2').textContent=R.ammo;
+    document.getElementById('hv-bio').textContent=alive;
+  },
+
+  _draw(){
+    const ctx=this.ctx;
+    ctx.fillStyle='#000';ctx.fillRect(0,0,1024,576);
+    if(Game.scene==='SURFACE')this._drawSurface(ctx,1024,576);
+    else if(Game.scene==='SPACE')this._drawSpace(ctx,1024,576);
+  },
+
+  _drawSurface(ctx,W,H){
+    ctx.save();ctx.translate(-this.camX,-this.camY);
+    // Water column
+    const wg=ctx.createLinearGradient(0,0,0,this.WH);
+    wg.addColorStop(0,'#000810');wg.addColorStop(0.5,'#010f1e');wg.addColorStop(1,'#001628');
+    ctx.fillStyle=wg;ctx.fillRect(0,0,this.WW,this.WH);
+    // Sea floor
+    const fg=ctx.createLinearGradient(0,220,0,this.WH);
+    fg.addColorStop(0,'#020f1c');fg.addColorStop(0.3,'#010810');fg.addColorStop(1,'#000508');
+    ctx.fillStyle=fg;ctx.fillRect(0,220,this.WW,this.WH);
+    // Thermal vents glow spots
+    for(let i=0;i<5;i++){
+      const vx=350+i*420,vy=this.WH-80;
+      const vg=ctx.createRadialGradient(vx,vy,5,vx,vy,120);
+      vg.addColorStop(0,`rgba(255,80,0,0.12)`);vg.addColorStop(1,'rgba(255,80,0,0)');
+      ctx.fillStyle=vg;ctx.beginPath();ctx.arc(vx,vy,120,0,Math.PI*2);ctx.fill();
+      // vent column
+      const vcg=ctx.createLinearGradient(vx,vy,vx,vy-240);
+      vcg.addColorStop(0,'rgba(255,100,20,0.15)');vcg.addColorStop(1,'rgba(255,100,20,0)');
+      ctx.fillStyle=vcg;ctx.fillRect(vx-18,vy-240,36,240);
+    }
+    // Horizon line
+    ctx.strokeStyle='rgba(40,120,180,0.2)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,225);ctx.lineTo(this.WW,225);ctx.stroke();
+    // Cracks (rock formations on seafloor)
+    this.cracks.forEach(c=>{
+      ctx.strokeStyle=`rgba(255,90,0,${c.alpha})`;ctx.lineWidth=c.w;
+      ctx.beginPath();ctx.moveTo(c.pts[0].x,c.pts[0].y);c.pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.stroke();
+      ctx.strokeStyle=`rgba(255,50,0,${c.alpha*0.25})`;ctx.lineWidth=c.w*4;ctx.stroke();
+    });
+    // Bubbles rising
+    this.bubbles.forEach(b=>{
+      ctx.fillStyle='rgba(160,210,255,0.12)';ctx.beginPath();ctx.arc(b.x%this.WW,b.y,b.s,0,Math.PI*2);ctx.fill();
+    });
+    // Entities (under darkness layer)
+    this.crystalNodes.forEach(n=>n.draw(ctx));
+    this.biofilms.forEach(b=>b.draw(ctx));
+    this.enemies.forEach(e=>e.draw(ctx));
+    this.bullets.forEach(b=>b.draw(ctx));
+    // Blood / particles
+    this.particles.forEach(p=>{
+      ctx.globalAlpha=Math.min(1,p.life*(p.isBlood?1.5:1.8));
+      ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+      if(p.isBubble){ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=0.5;ctx.stroke();}
+    });
+    ctx.globalAlpha=1;
+    ctx.restore();
+
+    // ── Darkness with flashlight ────────────────────────
+    if(!this.lightCanvas){this.lightCanvas=document.createElement('canvas');this.lightCtx=this.lightCanvas.getContext('2d');}
+    this.lightCanvas.width=W;this.lightCanvas.height=H;
+    const lctx=this.lightCtx;
+    lctx.fillStyle='rgba(0,4,12,0.93)';lctx.fillRect(0,0,W,H);
+    lctx.globalCompositeOperation='destination-out';
+    // Ally lights
+    this.allies.forEach(a=>{
+      const ax=a.x-this.camX,ay=a.y-this.camY;
+      const ag=lctx.createRadialGradient(ax,ay,0,ax,ay,55);ag.addColorStop(0,'rgba(255,255,255,0.8)');ag.addColorStop(1,'rgba(255,255,255,0)');lctx.fillStyle=ag;lctx.beginPath();lctx.arc(ax,ay,55,0,Math.PI*2);lctx.fill();
+      const ac=lctx.createRadialGradient(ax,ay,5,ax,ay,260);ac.addColorStop(0,'rgba(100,255,200,0.8)');ac.addColorStop(1,'rgba(100,255,200,0)');lctx.fillStyle=ac;lctx.beginPath();lctx.moveTo(ax,ay);lctx.arc(ax,ay,260,a.angle-0.38,a.angle+0.38);lctx.closePath();lctx.fill();
+    });
+    // Crystal glow punch-through
+    this.crystalNodes.forEach(n=>{
+      if(n.depleted)return;
+      const nx=n.x-this.camX,ny=n.y-this.camY;
+      const cg=lctx.createRadialGradient(nx,ny,4,nx,ny,50);cg.addColorStop(0,'rgba(100,180,255,0.35)');cg.addColorStop(1,'rgba(100,180,255,0)');lctx.fillStyle=cg;lctx.beginPath();lctx.arc(nx,ny,50,0,Math.PI*2);lctx.fill();
+    });
+    // Player flashlight
+    const ppx=this.player.x-this.camX,ppy=this.player.y-this.camY;
+    const pa2=lctx.createRadialGradient(ppx,ppy,0,ppx,ppy,95);pa2.addColorStop(0,'rgba(255,255,255,0.92)');pa2.addColorStop(1,'rgba(255,255,255,0)');lctx.fillStyle=pa2;lctx.beginPath();lctx.arc(ppx,ppy,95,0,Math.PI*2);lctx.fill();
+    const pca=this.player.angle,pcl=450;
+    const pc2=lctx.createRadialGradient(ppx,ppy,16,ppx,ppy,pcl);pc2.addColorStop(0,'rgba(210,245,255,1)');pc2.addColorStop(0.5,'rgba(210,245,255,0.6)');pc2.addColorStop(1,'rgba(210,245,255,0)');lctx.fillStyle=pc2;lctx.beginPath();lctx.moveTo(ppx,ppy);lctx.arc(ppx,ppy,pcl,pca-0.42,pca+0.42);lctx.closePath();lctx.fill();
+    ctx.globalCompositeOperation='source-over';ctx.drawImage(this.lightCanvas,0,0);
+    // Draw characters on top of darkness
+    ctx.save();ctx.translate(-this.camX,-this.camY);
+    this.allies.forEach(a=>a.draw(ctx,'SURFACE'));
+    this.player.draw(ctx,'SURFACE');
+    ctx.restore();
+  },
+
+  _drawSpace(ctx,W,H){
+    // Underwater background
+    const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#000812');bg.addColorStop(1,'#001528');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+    // Ambient bubbles
+    this.bubbles.forEach(b=>{ctx.fillStyle='rgba(160,210,255,0.2)';ctx.beginPath();ctx.arc((b.x-this.camX*0.3)%this.WW,b.y%H,b.s*1.2,0,Math.PI*2);ctx.fill();});
+    ctx.save();ctx.translate(-this.camX,-this.camY);
+    const sX=512,sY=288;
+    // Submarine body
+    // Shadow
+    ctx.fillStyle='rgba(0,150,255,0.04)';ctx.beginPath();ctx.ellipse(sX,sY+45,380,140,0,0,Math.PI*2);ctx.fill();
+    // Propeller section
+    ctx.fillStyle='#0a1018';ctx.strokeStyle='#1a3040';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(sX-140,sY-22);ctx.lineTo(sX-185,sY-42);ctx.lineTo(sX-185,sY+42);ctx.lineTo(sX-140,sY+22);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle='#050c10';ctx.fillRect(sX-196,sY-14,11,28);
+    // Spinning prop blades
+    const spin=this.globalT*1.8;
+    ctx.fillStyle='#ffaa00';
+    for(let i=0;i<4;i++){const ba=spin+i*Math.PI/2;ctx.fillRect(sX-200+Math.cos(ba)*2,sY+Math.sin(ba)*20-2,5,4);}
+    // Hull main body
+    ctx.fillStyle='#131c26';ctx.strokeStyle='#1e3348';ctx.lineWidth=3;
+    ctx.beginPath();ctx.ellipse(sX,sY,140,42,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+    // Conning tower
+    ctx.fillStyle='#0e1820';ctx.beginPath();ctx.roundRect(sX-22,sY-72,62,48,8);ctx.fill();ctx.stroke();
+    // Tower windows
+    for(let i=0;i<2;i++){
+      ctx.fillStyle='rgba(0,180,255,0.15)';ctx.strokeStyle=S.infection>50?'rgba(255,50,50,0.5)':'rgba(0,180,255,0.5)';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(sX+i*22,sY-52,8,0,Math.PI*2);ctx.fill();ctx.stroke();
+    }
+    // Periscope
+    ctx.strokeStyle='#1e3040';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(sX+35,sY-72);ctx.lineTo(sX+35,sY-90);ctx.lineTo(sX+50,sY-90);ctx.stroke();
+    // Status lights
+    for(let i=0;i<5;i++){const ok=S.infection<25+i*15;ctx.fillStyle=ok?'rgba(0,220,255,0.85)':'rgba(255,34,68,0.85)';ctx.beginPath();ctx.arc(sX-48+i*28,sY-10,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#000';ctx.lineWidth=0.5;ctx.stroke();}
+    // Infection overlay
+    if(S.infection>0){ctx.fillStyle=`rgba(45,204,112,${(S.infection/100)*0.28})`;ctx.beginPath();ctx.ellipse(sX,sY,140,42,0,0,Math.PI*2);ctx.fill();}
+    // Label
+    ctx.fillStyle='rgba(180,220,255,0.3)';ctx.font="13px 'Share Tech Mono',monospace";ctx.fillText('KHEPRI-9',sX+44,sY+22);
+    // Docking arm
+    ctx.strokeStyle='#0a2030';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(sX-140,sY);ctx.lineTo(sX-200,sY);ctx.stroke();
+    this.biofilms.forEach(b=>b.draw(ctx));
+    this.enemies.forEach(e=>e.draw(ctx));
+    this.bullets.forEach(b=>b.draw(ctx));
+    this.particles.forEach(p=>{
+      ctx.globalAlpha=Math.min(1,p.life*(p.isBlood?1.5:2));ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+    });
+    ctx.globalAlpha=1;
+    ctx.restore();
+    // Light overlay for space scene (slightly less dark)
+    if(!this.lightCanvas){this.lightCanvas=document.createElement('canvas');this.lightCtx=this.lightCanvas.getContext('2d');}
+    this.lightCanvas.width=W;this.lightCanvas.height=H;
+    const lctx=this.lightCtx;
+    lctx.fillStyle='rgba(0,6,18,0.80)';lctx.fillRect(0,0,W,H);
+    lctx.globalCompositeOperation='destination-out';
+    // Sub lights
+    const ssx=sX-this.camX,ssy=sY-this.camY;
+    const subG=lctx.createRadialGradient(ssx,ssy,20,ssx,ssy,220);subG.addColorStop(0,'rgba(255,255,255,0.55)');subG.addColorStop(1,'rgba(255,255,255,0)');lctx.fillStyle=subG;lctx.beginPath();lctx.arc(ssx,ssy,220,0,Math.PI*2);lctx.fill();
+    this.allies.forEach(a=>{
+      const ax=a.x-this.camX,ay=a.y-this.camY;
+      const ag=lctx.createRadialGradient(ax,ay,0,ax,ay,70);ag.addColorStop(0,'rgba(255,255,255,0.8)');ag.addColorStop(1,'rgba(255,255,255,0)');lctx.fillStyle=ag;lctx.beginPath();lctx.arc(ax,ay,70,0,Math.PI*2);lctx.fill();
+      const ac=lctx.createRadialGradient(ax,ay,5,ax,ay,230);ac.addColorStop(0,'rgba(100,255,200,0.8)');ac.addColorStop(1,'rgba(100,255,200,0)');lctx.fillStyle=ac;lctx.beginPath();lctx.moveTo(ax,ay);lctx.arc(ax,ay,230,a.angle-0.38,a.angle+0.38);lctx.closePath();lctx.fill();
+    });
+    const ppx2=this.player.x-this.camX,ppy2=this.player.y-this.camY;
+    const pa3=lctx.createRadialGradient(ppx2,ppy2,0,ppx2,ppy2,130);pa3.addColorStop(0,'rgba(255,255,255,0.8)');pa3.addColorStop(1,'rgba(255,255,255,0)');lctx.fillStyle=pa3;lctx.beginPath();lctx.arc(ppx2,ppy2,130,0,Math.PI*2);lctx.fill();
+    const pca2=this.player.angle,pcl2=360;
+    const pc3=lctx.createRadialGradient(ppx2,ppy2,10,ppx2,ppy2,pcl2);pc3.addColorStop(0,'rgba(255,255,255,0.9)');pc3.addColorStop(1,'rgba(255,255,255,0)');lctx.fillStyle=pc3;lctx.beginPath();lctx.moveTo(ppx2,ppy2);lctx.arc(ppx2,ppy2,pcl2,pca2-0.45,pca2+0.45);lctx.closePath();lctx.fill();
+    ctx.globalCompositeOperation='source-over';ctx.drawImage(this.lightCanvas,0,0);
+    ctx.save();ctx.translate(-this.camX,-this.camY);
+    this.allies.forEach(a=>a.draw(ctx,'SPACE'));this.player.draw(ctx,'SPACE');ctx.restore();
+  }
+};
+
+E.init();
+</script>
+</body>
+</html>
