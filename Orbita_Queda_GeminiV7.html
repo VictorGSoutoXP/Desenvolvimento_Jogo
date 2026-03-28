@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ÓRBITA & QUEDA — PROFUNDEZAS DE ENCÉLADO</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg:      #000810;
+  --cyan:    #00c8e8;
+  --green:   #00e886;
+  --amber:   #ffaa00;
+  --red:     #ff2244;
+  --bio:     #2dcc70;
+  --crystal: #e800cc;
+  --text:    #b8d4dc;
+  --dim:     #3a5a6a;
+  --panel:   rgba(0, 8, 20, 0.96);
+  --border:  rgba(0, 200, 232, 0.18);
+  --font:    'Share Tech Mono', 'Courier New', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+body {
+  background: #000;
+  color: var(--text);
+  font-family: var(--font);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+#wrap {
+  position: relative;
+  width: min(100vw, calc(100vh * 16/9));
+  aspect-ratio: 16/9;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* Scanlines overlay */
+#wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px, transparent 2px,
+    rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px
+  );
+  pointer-events: none;
+  z-index: 200;
+}
+
+/* Vignette */
+#wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.85) 100%);
+  pointer-events: none;
+  z-index: 199;
+}
+
+canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  z-index: 10;
+}
+.screen.active { display: flex; }
+
+/* ─── BOOT ─────────────────────────────────────────────── */
+#s-boot {
+  background: var(--panel);
+  justify-content: center;
+  align-items: center;
+  pointer-events: auto;
+  gap: 0;
+}
+
+.boot-eyebrow {
+  color: var(--dim);
+  font-size: clamp(0.55rem, 0.9vw, 0.7rem);
+  letter-spacing: 5px;
+  margin-bottom: 6px;
+}
+.boot-title {
+  color: #ffffff;
+  font-size: clamp(2rem, 4.5vw, 3.8rem);
+  letter-spacing: 10px;
+  font-weight: normal;
+  line-height: 1;
+  text-shadow: 0 0 40px rgba(0,200,232,0.2);
+}
+.boot-sub {
+  color: var(--cyan);
+  font-size: clamp(0.6rem, 1vw, 0.8rem);
+  letter-spacing: 6px;
+  margin-top: 6px;
+  opacity: 0.7;
+}
+.boot-divider {
+  width: 320px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--dim), transparent);
+  margin: 22px 0;
+}
+.boot-lore {
+  max-width: 540px;
+  font-size: clamp(0.68rem, 1vw, 0.8rem);
+  color: #6a8a98;
+  line-height: 1.8;
+  text-align: left;
+  border-left: 2px solid var(--dim);
+  padding-left: 18px;
+  margin-bottom: 20px;
+}
+.boot-lore strong { color: var(--text); }
+.boot-controls {
+  font-size: clamp(0.58rem, 0.85vw, 0.7rem);
+  color: var(--dim);
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.boot-controls span { color: var(--cyan); }
+
+/* ─── BUTTONS ───────────────────────────────────────────── */
+.btn {
+  background: transparent;
+  color: var(--cyan);
+  border: 1px solid var(--cyan);
+  padding: 9px 22px;
+  font-size: clamp(0.65rem, 1vw, 0.78rem);
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.12s, box-shadow 0.12s;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin: 4px;
+}
+.btn:hover:not(:disabled) {
+  background: var(--cyan);
+  color: #000810;
+  box-shadow: 0 0 14px rgba(0,200,232,0.35);
+}
+.btn:disabled { border-color: var(--dim); color: var(--dim); cursor: not-allowed; }
+.btn-amber { color: var(--amber); border-color: var(--amber); }
+.btn-amber:hover:not(:disabled) { background: var(--amber); color: #000; box-shadow: 0 0 14px rgba(255,170,0,0.35); }
+
+/* ─── STATION ────────────────────────────────────────────── */
+#s-station {
+  background: var(--panel);
+  pointer-events: auto;
+  justify-content: flex-start;
+}
+
+.stn-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.5);
+  flex-shrink: 0;
+}
+.stn-title {
+  color: #fff;
+  font-size: clamp(0.85rem, 1.6vw, 1.1rem);
+  letter-spacing: 5px;
+  font-weight: normal;
+}
+.stn-title span { color: var(--dim); font-size: 0.7em; }
+.stn-day {
+  color: var(--amber);
+  font-size: clamp(0.6rem, 0.9vw, 0.72rem);
+  letter-spacing: 2px;
+}
+
+.stn-body {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1fr;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.panel {
+  padding: 14px 16px;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+.panel:last-child { border-right: none; }
+
+.p-title {
+  color: var(--dim);
+  font-size: clamp(0.55rem, 0.8vw, 0.65rem);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(0,200,232,0.08);
+}
+
+/* Status bars */
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+  font-size: clamp(0.6rem, 0.85vw, 0.72rem);
+}
+.s-label { color: var(--dim); width: 88px; flex-shrink: 0; letter-spacing: 1px; }
+.s-pct { width: 30px; text-align: right; flex-shrink: 0; font-size: 0.95em; }
+.bar-track { flex: 1; height: 3px; background: rgba(255,255,255,0.05); }
+.bar-fill { height: 100%; transition: width 0.4s ease; }
+.f-cyan  { background: var(--cyan); }
+.f-green { background: var(--green); }
+.f-amber { background: var(--amber); }
+.f-red   { background: var(--red); }
+.f-bio   { background: var(--bio); }
+
+/* Inventory */
+.inv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  font-size: clamp(0.62rem, 0.88vw, 0.74rem);
+}
+.inv-row:last-child { border-bottom: none; }
+.inv-label { color: var(--dim); }
+.inv-val { color: #fff; font-size: 1.1em; }
+
+/* Mission box */
+.mission-box {
+  background: rgba(0,200,232,0.025);
+  border: 1px solid rgba(0,200,232,0.1);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.mission-label { color: var(--cyan); font-size: clamp(0.55rem, 0.75vw, 0.62rem); letter-spacing: 4px; margin-bottom: 6px; }
+.mission-text { font-size: clamp(0.6rem, 0.82vw, 0.72rem); color: #7090a0; line-height: 1.65; }
+
+/* Lore logs */
+#log-container { display: flex; flex-direction: column; gap: 5px; }
+.log-entry {
+  font-size: clamp(0.58rem, 0.8vw, 0.68rem);
+  line-height: 1.55;
+  padding: 7px 10px;
+  border-left: 2px solid var(--dim);
+  background: rgba(0,0,0,0.3);
+  color: #506070;
+}
+.log-entry.warn  { border-color: var(--amber); color: #907030; }
+.log-entry.alert { border-color: var(--red);   color: #903040; }
+.log-entry.ok    { border-color: var(--green);  color: #307050; }
+
+/* Protocol buttons */
+.proto-list { display: flex; flex-direction: column; gap: 5px; }
+.proto-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 11px;
+  font-family: var(--font);
+  font-size: clamp(0.6rem, 0.82vw, 0.72rem);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s, color 0.12s;
+  letter-spacing: 1px;
+}
+.proto-btn:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); background: rgba(0,200,232,0.04); }
+.proto-btn:disabled { color: var(--dim); cursor: not-allowed; }
+.proto-cost { color: var(--crystal); margin-right: 6px; }
+
+/* Quick report */
+.report-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: clamp(0.58rem, 0.8vw, 0.68rem);
+  line-height: 2.1;
+}
+.report-row .lbl { color: var(--dim); }
+.report-row .val { color: var(--text); }
+
+/* Footer buttons */
+.stn-footer {
+  display: flex;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.stn-footer .btn {
+  flex: 1;
+  margin: 0;
+  border: none;
+  border-right: 1px solid var(--border);
+  padding: 12px 6px;
+  font-size: clamp(0.6rem, 0.9vw, 0.74rem);
+}
+.stn-footer .btn:last-child { border-right: none; }
+
+/* ─── HUD OVERLAY ────────────────────────────────────────── */
+#s-surf-hud, #s-space-hud {
+  pointer-events: none;
+}
+
+.hud-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 14px;
+  background: rgba(0,0,0,0.72);
+  border-bottom: 1px solid rgba(0,200,232,0.12);
+  font-size: clamp(0.6rem, 0.82vw, 0.68rem);
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+.hud-group { display: flex; gap: 16px; align-items: center; }
+.hud-stat { display: flex; align-items: center; gap: 6px; }
+.hud-stat .lbl { color: var(--dim); }
+.hud-mini { width: 54px; height: 3px; background: rgba(255,255,255,0.08); }
+.hud-mini-fill { height: 100%; transition: width 0.2s; }
+.hud-val { min-width: 24px; color: var(--text); }
+.hud-center { color: var(--cyan); font-size: 0.9em; letter-spacing: 3px; }
+
+.action-prompt {
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.82);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #fff;
+  padding: 5px 14px;
+  font-size: clamp(0.6rem, 0.85vw, 0.7rem);
+  letter-spacing: 2px;
+  display: none;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ─── SCANNER READOUT ───────────────────────────────────── */
+#scanner-hud {
+  position: absolute;
+  top: 14%;
+  right: 2%;
+  background: rgba(0,0,0,0.85);
+  border: 1px solid var(--bio);
+  padding: 10px 14px;
+  font-size: clamp(0.6rem, 0.82vw, 0.68rem);
+  letter-spacing: 2px;
+  display: none;
+  pointer-events: none;
+  z-index: 30;
+}
+#scanner-hud .sc-title { color: var(--bio); margin-bottom: 5px; }
+#scanner-hud .sc-val { color: #fff; font-size: 1.2em; }
+
+/* ─── GAME OVER ─────────────────────────────────────────── */
+#s-over {
+  background: rgba(0,2,8,0.97);
+  justify-content: center;
+  align-items: center;
+  pointer-events: auto;
+  text-align: center;
+}
+.over-eyebrow { color: var(--red); font-size: clamp(0.58rem, 0.85vw, 0.7rem); letter-spacing: 6px; margin-bottom: 10px; opacity: 0.8; }
+.over-title { color: #fff; font-size: clamp(1.4rem, 3vw, 2.2rem); letter-spacing: 5px; font-weight: normal; margin-bottom: 18px; }
+.over-report {
+  max-width: 460px;
+  text-align: left;
+  border: 1px solid rgba(255,34,68,0.18);
+  background: rgba(255,34,68,0.025);
+  padding: 14px 18px;
+  margin: 0 auto 20px;
+}
+.over-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: clamp(0.62rem, 0.88vw, 0.74rem);
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.over-row:last-child { border: none; margin-top: 8px; }
+.over-row .lbl { color: var(--dim); }
+.over-row .val { color: var(--crystal); font-weight: bold; }
+.over-note { color: var(--dim); font-size: clamp(0.58rem, 0.8vw, 0.68rem); line-height: 1.6; }
+
+/* ─── FLASH ─────────────────────────────────────────────── */
+#flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0;
+  transition: opacity 0.08s;
+}
+</style>
+</head>
+<body>
+
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="flash"></div>
+  <div id="scanner-hud">
+    <div class="sc-title">SCANNER BIO</div>
+    <div id="sc-reading" class="sc-val">—</div>
+    <div style="color:var(--dim);font-size:0.85em;margin-top:3px" id="sc-label">—</div>
+  </div>
+
+  <!-- ══ BOOT ══════════════════════════════════════════════ -->
+  <div id="s-boot" class="screen active">
+    <div class="boot-eyebrow">KHEPRI COLONIAL SYSTEMS · OPERAÇÕES DE MERGULHO</div>
+    <div class="boot-title">ÓRBITA & QUEDA</div>
+    <div class="boot-sub">OCEANO SUBGLACIAL DE ENCÉLADO · ANO 2092</div>
+    <div class="boot-divider"></div>
+    <div class="boot-lore">
+      O submarino <strong>Khepri-9</strong> opera nas profundezas abissais de Encélado há 51 dias.<br>
+      Missão original: extração de <strong>Cristais de Éter</strong>, um supercondutor forjado sob pressão extrema, capaz de resolver a crise energética da Terra.<br><br>
+      Porém, nas últimas coletas, o maquinário trouxe algo a mais.<br>
+      Estruturas biológicas. Coloniais. Ativas.<br><br>
+      <strong>A Helix quer lucrar com a biologia. Leviatãs abissais defendem seu território.</strong><br>
+      Você lidera uma equipe de batedores. Não deixem que a fauna local destrua o submarino.
+    </div>
+    <div class="boot-controls">
+      <span>WASD</span> nadar &nbsp;·&nbsp; <span>MOUSE</span> orientar &nbsp;·&nbsp; <span>CLIQUE</span> atirar / perfurar &nbsp;·&nbsp; <span>F</span> scanner
+    </div>
+    <button class="btn" onclick="Game.start()">▶ INICIAR PROTOCOLO DE MERGULHO</button>
+  </div>
+
+  <!-- ══ STATION ════════════════════════════════════════════ -->
+  <div id="s-station" class="screen">
+    <div class="stn-header">
+      <div class="stn-title">SUBMARINO KHEPRI-9 <span>// PROFUNDEZAS DE ENCÉLADO</span></div>
+      <div class="stn-day" id="stn-day">DIA 01 — TURNO ALFA</div>
+    </div>
+
+    <div class="stn-body">
+      <!-- Coluna Esquerda: Sistemas -->
+      <div class="panel">
+        <div class="p-title">Sistemas do Submarino</div>
+
+        <div class="stat-row">
+          <span class="s-label">CASCO</span>
+          <div class="bar-track"><div class="bar-fill f-cyan" id="b-hull" style="width:100%"></div></div>
+          <span class="s-pct" id="v-hull">100%</span>
+        </div>
+        <div class="stat-row">
+          <span class="s-label">INFECÇÃO BIO</span>
+          <div class="bar-track"><div class="bar-fill f-bio" id="b-bio" style="width:0%"></div></div>
+          <span class="s-pct" id="v-bio" style="color:var(--bio)">0%</span>
+        </div>
+        <div class="stat-row">
+          <span class="s-label">SUPORTE VIDA</span>
+          <div class="bar-track"><div class="bar-fill f-green" id="b-life" style="width:100%"></div></div>
+          <span class="s-pct" id="v-life">100%</span>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div class="p-title">Inventário</div>
+          <div class="inv-row">
+            <span class="inv-label" style="color:var(--crystal)">CRISTAIS DE ÉTER (un)</span>
+            <span class="inv-val" id="inv-crystal" style="color:var(--crystal)">0</span>
+          </div>
+          <div class="inv-row">
+            <span class="inv-label">KITS DE REPARO</span>
+            <span class="inv-val" id="inv-kits">2</span>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div class="p-title">Relatório Rápido</div>
+          <div class="report-row"><span class="lbl">TURNO</span><span class="val" id="r-day">01</span></div>
+          <div class="report-row"><span class="lbl">MERGULHOS</span><span class="val" id="r-dives">0</span></div>
+          <div class="report-row"><span class="lbl">CRISTAIS</span><span class="val" id="r-total" style="color:var(--crystal)">0</span></div>
+        </div>
+      </div>
+
+      <!-- Coluna Central: Missão + Logs -->
+      <div class="panel">
+        <div class="p-title">Central de Comando</div>
+        <div class="mission-box">
+          <div class="mission-label">BRIEFING ATUAL</div>
+          <div class="mission-text" id="m-brief">Aguardando autorização de mergulho...</div>
+        </div>
+        <div class="p-title">Logs do Sonar</div>
+        <div id="log-container"></div>
+      </div>
+
+      <!-- Coluna Direita: Protocolos -->
+      <div class="panel">
+        <div class="p-title">Protocolos</div>
+        <div class="proto-list">
+          <button class="proto-btn" id="btn-repair" onclick="Game.repair()">
+            <span class="proto-cost">[2 CRISTAL]</span>REPARAR ESCAFANDRO
+          </button>
+          <button class="proto-btn" id="btn-purge" onclick="Game.purge()">
+            <span class="proto-cost">[3 CRISTAL]</span>PURGAR FILTROS BIO
+          </button>
+          <button class="proto-btn" id="btn-hull" onclick="Game.reinforceHull()">
+            <span class="proto-cost">[4 CRISTAL]</span>REFORÇAR CASCO
+          </button>
+        </div>
+        <div style="margin-top:16px;">
+          <div class="p-title">Status Nadir</div>
+          <div id="nadir-status" style="font-size:clamp(0.58rem,0.8vw,0.68rem);color:var(--dim);line-height:1.8;">
+            Aguardando dados de campo...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stn-footer">
+      <button class="btn" onclick="Game.goSurface()">▼ MERGULHAR ATÉ O LEITO OCEÂNICO</button>
+      <button class="btn btn-amber" onclick="Game.goSpace()">◌ INSPEÇÃO — CASCO EXTERNO</button>
+    </div>
+  </div>
+
+  <!-- ══ SURFACE HUD ════════════════════════════════════════ -->
+  <div id="s-surf-hud" class="screen">
+    <div class="hud-top">
+      <div class="hud-group">
+        <div class="hud-stat">
+          <span class="lbl">TRAJE</span>
+          <div class="hud-mini"><div class="hud-mini-fill f-cyan" id="h-hp" style="width:100%"></div></div>
+          <span class="hud-val" id="hv-hp">100</span>
+        </div>
+        <div class="hud-stat">
+          <span class="lbl">AQUECIMENTO</span>
+          <div class="hud-mini"><div class="hud-mini-fill" id="h-bat" style="width:100%;background:var(--text)"></div></div>
+          <span class="hud-val" id="hv-bat">100</span>
+        </div>
+      </div>
+      <span class="hud-center">LEITO OCEÂNICO · PRESSÃO CRÍTICA</span>
+      <div class="hud-group">
+        <div class="hud-stat">
+          <span class="lbl" style="color:var(--crystal)">CARGAS</span>
+          <span class="hud-val" style="color:var(--crystal)" id="hv-crystal">0/3</span>
+        </div>
+      </div>
+    </div>
+    <div class="action-prompt" id="p-surf">CLIQUE PARA EXTRAIR CRISTAL</div>
+  </div>
+
+  <!-- ══ SPACE HUD ══════════════════════════════════════════ -->
+  <div id="s-space-hud" class="screen">
+    <div class="hud-top">
+      <div class="hud-group">
+        <div class="hud-stat">
+          <span class="lbl">PROPULSOR</span>
+          <div class="hud-mini"><div class="hud-mini-fill f-amber" id="h-fuel" style="width:100%"></div></div>
+          <span class="hud-val" id="hv-fuel">100</span>
+        </div>
+        <div class="hud-stat">
+          <span class="lbl">CASCO DO SUB</span>
+          <div class="hud-mini"><div class="hud-mini-fill f-cyan" id="h-hull" style="width:100%"></div></div>
+        </div>
+      </div>
+      <span class="hud-center" style="color:var(--amber)">ÁGUAS ABERTAS · ZONA DE COMBATE</span>
+      <div class="hud-group">
+        <div class="hud-stat">
+          <span class="lbl">BIOFILME</span>
+          <span class="hud-val" style="color:var(--bio)" id="hv-bio">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="action-prompt" id="p-space">CLIQUE PARA ELIMINAR BIOFILME</div>
+  </div>
+
+  <!-- ══ GAME OVER ══════════════════════════════════════════ -->
+  <div id="s-over" class="screen">
+    <div class="over-eyebrow">— RELATÓRIO DE INCIDENTE — SUBMARINO KHEPRI-9 —</div>
+    <div class="over-title" id="o-title">FALHA OPERACIONAL</div>
+    <div class="over-report">
+      <div class="over-row"><span class="lbl">MERGULHADOR</span><span class="val">OP-ALFA · ABATIDO</span></div>
+      <div class="over-row"><span class="lbl">DIA DE OPERAÇÃO</span><span class="val" id="o-day">—</span></div>
+      <div class="over-row"><span class="lbl">MERGULHOS REALIZADOS</span><span class="val" id="o-dives">—</span></div>
+      <div class="over-row"><span class="lbl">CRISTAIS COLETADOS</span><span class="val" id="o-crystal" style="color:var(--crystal)">—</span></div>
+      <div class="over-row"><span class="lbl">CAUSA DA FALHA</span><span class="val" id="o-cause">—</span></div>
+      <div class="over-row">
+        <span class="over-note" id="o-note">Registro enviado à Administração Submarina.</span>
+      </div>
+    </div>
+    <button class="btn" onclick="Game.start()">↺ INICIAR NOVO TURNO</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   ÓRBITA & QUEDA — PROFUNDEZAS DE ENCÉLADO
+   Leviathans Abissais, Bots Aliados e Mecânica Refinada.
+══════════════════════════════════════════════════════════════ */
+
+// ─── UTILS ────────────────────────────────────────────────────
+const rnd    = (lo, hi) => lo + Math.random() * (hi - lo);
+const clamp  = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const lerp   = (a, b, t) => a + (b - a) * t;
+const dist2d = (ax, ay, bx, by) => Math.sqrt((ax-bx)**2 + (ay-by)**2);
+
+// ─── STATE ────────────────────────────────────────────────────
+const S = {
+  day: 1, dives: 0, totalCrystal: 0, bioRemoved: 0,
+  inv: { crystal: 0, kits: 2 }, hull: 100, infection: 0, life: 100,
+  logs: [], logIdx: 0
+};
+
+const R = {
+  hp: 100, bat: 100, fuel: 100, crystal: 0,
+  reset() { this.hp=100; this.bat=100; this.fuel=100; this.crystal=0; }
+};
+
+// ─── NARRATIVE DATA ───────────────────────────────────────────
+const LORE = [
+  { c:'ok',    t:'Mergulho 01 — Todos os sistemas do submarino nominais. Extração de Cristais de Éter autorizada. Missão: garantir o monopólio energético.' },
+  { c:'',      t:'Mergulho 02 — Amostra de cristal apresentou filamentos orgânicos. A Helix ordenou não higienizar as amostras. O lucro acima de tudo.' },
+  { c:'warn',  t:'Mergulho 03 — Peixes alienígenas carnívoros detectados próximos aos nódulos. Parece que perturbamos o ecossistema.' },
+  { c:'warn',  t:'Mergulho 04 — AVISO: A contaminação cresce no casco externo. Leviatãs gigantes foram atraídos pela assinatura de calor.' },
+  { c:'alert', t:'Mergulho 05 — O organismo a bordo consome energia dos cristais. Classificação: FENÔMENO NADIR. Estamos incubando um monstro.' },
+  { c:'alert', t:'Mergulho 06 — O sonar acusa múltiplos Leviatãs abissais. Eles estão atacando o nosso submarino enquanto coletamos.' },
+  { c:'alert', t:'Mergulho 07 — O submarino Khepri-9 foi comprometido. O oceano nos engole. Só nos resta lutar para sobreviver.' },
+];
+
+const BRIEFS = [
+  'Mergulho autorizado. Objetivo: Extrair 3 cargas de Cristais do leito oceânico. Seus bots aliados ajudarão na tarefa.',
+  'AVISO: Cardumes de peixes agressivos nas áreas de perfuração. Atire para se defender e proteja seus aliados.',
+  'A Helix exige a coleta. Deixe que a equipe autônoma te ajude se a situação ficar fora de controle.',
+  'Biofilme espalhado pelo casco. Leviatãs estão sendo atraídos. Eles vão morder a fuselagem. Elimine-os.',
+  'Situação crítica. Leviatãs atacando o nosso submarino diretamente. Mate as criaturas antes que o casco ceda!',
+];
+
+const NADIR_STATUS = [
+  'Nenhuma anomalia biológica confirmada no interior.',
+  'Pequenas amostras orgânicas aderidas aos cristais.',
+  'A biomassa se alimenta da radiação e do calor da nave.',
+  'ALERTA: O Nadir começou a dissolver os filtros de oxigênio.',
+  'RISCO CRÍTICO: O submarino pertence ao Nadir. Sobrevivência improvável.',
+];
+
+const OVER_TITLES = ['MERGULHADOR PERDIDO','QUEBRA DE PRESSÃO','ASSIMILAÇÃO NADIR','IMPLOSÃO ESTRUTURAL','LEITO OCEÂNICO'];
+const OVER_NOTES = {
+  bio:     'O Nadir parasitou os dutos do escafandro. Seu corpo servirá de adubo para o fundo do mar.',
+  battery: 'Sem energia térmica, o frio e a pressão abissal esmagaram o seu traje em instantes.',
+  hull:    'O casco foi estraçalhado pelas mandíbulas dos Leviatãs. A pressão da água implodiu o Khepri-9.',
+  life:    'Asfixia por contaminação de algas anômalas no suporte de vida.',
+  combat:  'Despedaçado pelos dentes da fauna local. Seus aliados tentaram, mas o oceano é impiedoso.',
+  default: 'O seu nome será apagado dos registros da Corporação Helix.'
+};
+
+// ─── GAME CONTROLLER ──────────────────────────────────────────
+const Game = {
+  scene: 'BOOT',
+
+  start() {
+    Object.assign(S, {
+      day:1, dives:0, totalCrystal:0, bioRemoved:0,
+      inv:{crystal:0,kits:2}, hull:100, infection:0, life:100,
+      logs:[], logIdx:0
+    });
+    this.goStation();
+  },
+
+  goStation() {
+    this.scene = 'STATION';
+    E.stop();
+    this._updateStation();
+    show('s-station');
+  },
+
+  goSurface() {
+    this.scene = 'SURFACE';
+    S.dives++;
+    R.reset();
+    E.initSurface();
+    show('s-surf-hud');
+    E.start();
+  },
+
+  goSpace() {
+    this.scene = 'SPACE';
+    R.reset();
+    E.initSpace();
+    show('s-space-hud');
+    E.start();
+  },
+
+  missionReturn(crystalGot, infGain) {
+    E.stop();
+    S.inv.crystal += crystalGot;
+    S.totalCrystal += crystalGot;
+    S.infection = clamp(S.infection + infGain, 0, 100);
+    S.life = clamp(100 - S.infection * 0.65, 5, 100);
+    S.day++;
+    if (S.logIdx < LORE.length) S.logs.unshift(LORE[S.logIdx++]);
+    if (S.logs.length > 4) S.logs.pop();
+    if (S.infection >= 100) { this.over('Contaminação total. Suporte de vida comprometido.', 'life'); return; }
+    this.goStation();
+  },
+
+  evaReturn(removed) {
+    E.stop();
+    S.bioRemoved += removed;
+    // Removedores concedem menos bônus se os leviatãs estiverem vivos, mas recompensa a limpeza
+    S.hull = clamp(S.hull + removed * 3, 0, 100);
+    S.infection = clamp(S.infection - removed * 4, 0, 100);
+    S.life = clamp(100 - S.infection * 0.65, 5, 100);
+    S.day++;
+    this.goStation();
+  },
+
+  repair() {
+    if (S.inv.crystal < 2) return;
+    S.inv.crystal -= 2; S.inv.kits = clamp(S.inv.kits + 1, 0, 5);
+    this._updateStation();
+  },
+
+  purge() {
+    if (S.inv.crystal < 3) return;
+    S.inv.crystal -= 3; S.infection = clamp(S.infection - 22, 0, 100);
+    S.life = clamp(100 - S.infection * 0.65, 5, 100);
+    this._updateStation();
+  },
+
+  reinforceHull() {
+    if (S.inv.crystal < 4) return;
+    S.inv.crystal -= 4; S.hull = clamp(S.hull + 28, 0, 100);
+    this._updateStation();
+  },
+
+  over(cause, type='default') {
+    E.stop();
+    const note = OVER_NOTES[type] || OVER_NOTES.default;
+    setText('o-title', OVER_TITLES[Math.floor(Math.random() * OVER_TITLES.length)]);
+    setText('o-day', String(S.day));
+    setText('o-dives', String(S.dives));
+    setText('o-crystal', S.totalCrystal + ' un.');
+    setText('o-cause', cause);
+    setText('o-note', note);
+    show('s-over');
+  },
+
+  _updateStation() {
+    const si = clamp(S.infection, 0, 100);
+    setText('stn-day', `TURNO ${pad(S.day)} — OPERAÇÃO ALFA`);
+
+    setBar('b-hull', S.hull, S.hull>50?'f-cyan':S.hull>25?'f-amber':'f-red');
+    setText('v-hull', Math.round(S.hull)+'%');
+
+    setBar('b-bio', si, 'f-bio');
+    const bioEl = document.getElementById('v-bio');
+    bioEl.textContent = Math.round(si)+'%';
+    bioEl.style.color = si>60?'var(--red)':si>30?'var(--amber)':'var(--bio)';
+
+    setBar('b-life', S.life, S.life>60?'f-green':S.life>30?'f-amber':'f-red');
+    setText('v-life', Math.round(S.life)+'%');
+
+    setText('inv-crystal', S.inv.crystal);
+    setText('inv-kits', S.inv.kits);
+    setText('r-day', pad(S.day));
+    setText('r-dives', S.dives);
+    setText('r-total', S.totalCrystal+' un.');
+
+    const bIdx = Math.min(S.day - 1, BRIEFS.length - 1);
+    setText('m-brief', BRIEFS[bIdx]);
+
+    const nadirIdx = Math.min(Math.floor(si / 22), NADIR_STATUS.length - 1);
+    const nadirEl = document.getElementById('nadir-status');
+    nadirEl.textContent = NADIR_STATUS[nadirIdx];
+    nadirEl.style.color = si > 44 ? (si > 66 ? 'var(--red)' : 'var(--amber)') : 'var(--dim)';
+
+    const logCont = document.getElementById('log-container');
+    logCont.innerHTML = '';
+    const logsToShow = S.logs.length ? S.logs : [LORE[0]];
+    logsToShow.slice(0, 4).forEach(l => {
+      const el = document.createElement('div');
+      el.className = 'log-entry ' + (l.c||'');
+      el.textContent = l.t;
+      logCont.appendChild(el);
+    });
+
+    disableBtn('btn-repair', S.inv.crystal < 2);
+    disableBtn('btn-purge',  S.inv.crystal < 3);
+    disableBtn('btn-hull',   S.inv.crystal < 4);
+  }
+};
+
+// helpers
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const canvas = document.getElementById('c');
+  canvas.style.display = (id === 's-surf-hud' || id === 's-space-hud') ? 'block' : 'none';
+}
+function setText(id, v) { const el = document.getElementById(id); if(el) el.textContent = v; }
+function setBar(id, pct, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.width = clamp(pct,0,100)+'%';
+  el.className = 'bar-fill ' + cls;
+}
+function disableBtn(id, dis) { const el=document.getElementById(id); if(el) el.disabled = dis; }
+function pad(n) { return String(n).padStart(2,'0'); }
+function flashFx(color) {
+  const el = document.getElementById('flash');
+  el.style.background = color; el.style.opacity = '1';
+  setTimeout(()=>el.style.opacity='0', 90);
+}
+
+// ─── ENTITIES ─────────────────────────────────────────────────
+
+class Bullet {
+  constructor(x, y, dirX, dirY, isPlayer) {
+    this.x = x; this.y = y;
+    this.vx = dirX * 700;
+    this.vy = dirY * 700;
+    this.isPlayer = isPlayer;
+    this.life = 1.2;
+    this.dead = false;
+  }
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.life -= dt;
+    if (this.life <= 0) this.dead = true;
+  }
+  draw(ctx) {
+    ctx.fillStyle = this.isPlayer ? '#00e5ff' : '#ff2244';
+    ctx.beginPath(); ctx.arc(this.x, this.y, 3, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+// Base class for Player and Ally Bots
+class AstronautBase {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.vx = 0; this.vy = 0;
+    this.angle = 0;
+    this.drilling = false;
+    this.welding = false;
+    this.fireCooldown = 0;
+    this.walkT = 0;
+  }
+
+  draw(ctx, scene, isAlly = false) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+
+    const suitColor = isAlly ? '#4a8c6c' : '#5c788c';
+    const highlightColor = isAlly ? '#00ffcc' : '#ffaa00';
+    const darkColor = isAlly ? '#1a3a2a' : '#22384a';
+
+    if (scene === 'SURFACE') {
+      const legSwing = Math.sin(this.walkT) * 6;
+      ctx.fillStyle = darkColor;
+      ctx.fillRect(legSwing - 5, -8, 10, 5);
+      ctx.fillRect(-legSwing - 5, 3, 10, 5);
+      
+      ctx.fillStyle = '#112233';
+      ctx.fillRect(-12, -9, 8, 18);
+      ctx.fillStyle = '#00c8e8'; 
+      ctx.fillRect(-14, -7, 4, 6);
+      ctx.fillRect(-14, 1, 4, 6);
+
+      ctx.fillStyle = suitColor;
+      ctx.beginPath();
+      ctx.arc(0, -5, 6, Math.PI*0.5, Math.PI*1.5);
+      ctx.arc(0, 5, 6, -Math.PI*0.5, Math.PI*0.5);
+      ctx.fill();
+
+      ctx.strokeStyle = isAlly ? '#3a7c5c' : '#4a6074';
+      ctx.lineWidth = 4.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(12, -3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, 7); ctx.lineTo(12, 3); ctx.stroke();
+
+      ctx.fillStyle = '#111';
+      ctx.fillRect(10, -4, 14, 8);
+      ctx.fillStyle = '#ff00cc';
+      ctx.beginPath(); ctx.moveTo(24, -3); ctx.lineTo(34 + (this.drilling ? rnd(0,4) : 0), 0); ctx.lineTo(24, 3); ctx.fill();
+      
+      if (this.drilling) {
+        ctx.fillStyle = 'rgba(255, 0, 200, 0.8)';
+        ctx.beginPath(); ctx.arc(32, 0, 5 + rnd(0,3), 0, Math.PI*2); ctx.fill();
+      } else if (this.fireCooldown > 0.15) {
+        ctx.fillStyle = '#00e5ff';
+        ctx.beginPath(); ctx.arc(36, 0, 4, 0, Math.PI*2); ctx.fill();
+      }
+
+      ctx.fillStyle = isAlly ? '#b4d6c6' : '#d4eaf6';
+      ctx.beginPath(); ctx.arc(1, 0, 7, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = highlightColor;
+      ctx.beginPath(); ctx.arc(2, 0, 5.5, -1.2, 1.2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(2, 0, 4.5, -0.8, 0); ctx.stroke();
+
+    } else {
+      ctx.fillStyle = darkColor;
+      ctx.fillRect(-4, -7, 8, 4);
+      ctx.fillRect(-6, 3, 9, 4);
+
+      ctx.fillStyle = '#0d1822';
+      ctx.fillRect(-15, -12, 12, 24);
+      ctx.fillStyle = '#00c8e8';
+      ctx.fillRect(-10, -14, 6, 4);
+      ctx.fillRect(-10, 10, 6, 4);
+      
+      ctx.fillStyle = '#ff2244'; ctx.fillRect(-13, -10, 2, 2);
+      ctx.fillStyle = '#00e886'; ctx.fillRect(-13, 8, 2, 2);
+
+      ctx.fillStyle = isAlly ? '#2a4c3c' : '#3a5060';
+      ctx.beginPath();
+      ctx.arc(0, -6, 6, Math.PI*0.5, Math.PI*1.5);
+      ctx.arc(0, 6, 6, -Math.PI*0.5, Math.PI*0.5);
+      ctx.fill();
+
+      ctx.strokeStyle = isAlly ? '#223c2c' : '#324250';
+      ctx.lineWidth = 4.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(14, -2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, 8); ctx.lineTo(14, 2); ctx.stroke();
+
+      ctx.fillStyle = '#111';
+      ctx.fillRect(12, -3, 10, 6);
+      ctx.fillStyle = highlightColor;
+      ctx.fillRect(22, -1, 4, 2);
+
+      if (this.welding) {
+        const g = ctx.createLinearGradient(26, 0, 45, 0);
+        g.addColorStop(0, isAlly ? 'rgba(0,255,204,1)' : 'rgba(255,170,0,1)');
+        g.addColorStop(1, isAlly ? 'rgba(0,255,204,0)' : 'rgba(255,50,0,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(26, -2); ctx.lineTo(45, 0); ctx.lineTo(26, 2); ctx.fill();
+      } else if (this.fireCooldown > 0.15) {
+        ctx.fillStyle = '#00e5ff';
+        ctx.beginPath(); ctx.arc(28, 0, 4, 0, Math.PI*2); ctx.fill();
+      }
+
+      ctx.fillStyle = suitColor;
+      ctx.beginPath(); ctx.arc(1, 0, 7.5, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#0a1a2a'; 
+      ctx.beginPath(); ctx.arc(2, 0, 6, -1.3, 1.3); ctx.fill();
+      ctx.strokeStyle = highlightColor; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(2, 0, 6, -1.3, 1.3); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+class Astronaut extends AstronautBase {
+  update(dt, keys, mx, my, scene) {
+    let dx = 0, dy = 0;
+    if (keys['KeyW'] || keys['ArrowUp'])    dy = -1;
+    if (keys['KeyS'] || keys['ArrowDown'])  dy =  1;
+    if (keys['KeyA'] || keys['ArrowLeft'])  dx = -1;
+    if (keys['KeyD'] || keys['ArrowRight']) dx =  1;
+    const l = Math.sqrt(dx*dx + dy*dy);
+    if (l > 0) { dx /= l; dy /= l; }
+    
+    this.angle = Math.atan2(my - this.y, mx - this.x);
+    if (this.fireCooldown > 0) this.fireCooldown -= dt;
+
+    if (scene === 'SURFACE') {
+      const spd = this.drilling ? 45 : 105;
+      this.x += dx * spd * dt;
+      this.y += dy * spd * dt;
+      if (l > 0) {
+        this.walkT += dt * 14;
+        if (Math.random() < 0.2) {
+          E.particles.push({
+            x: this.x + rnd(-8,8), y: this.y + rnd(-8,8),
+            vx: -dx*10 + rnd(-5,5), vy: -dy*10 + rnd(-5,5),
+            life: rnd(0.2, 0.5), color: 'rgba(120,150,180,0.5)', size: rnd(1,2.5)
+          });
+        }
+      } else {
+        this.walkT = lerp(this.walkT, Math.round(this.walkT/(Math.PI))*(Math.PI), dt*10);
+      }
+    } else {
+      const thrust = 180;
+      this.vx += dx * thrust * dt;
+      this.vy += dy * thrust * dt;
+      const spd = Math.sqrt(this.vx*this.vx+this.vy*this.vy);
+      const maxSpd = 150;
+      if (spd > maxSpd) { this.vx = this.vx/spd*maxSpd; this.vy = this.vy/spd*maxSpd; }
+      
+      this.vx *= Math.pow(0.05, dt);
+      this.vy *= Math.pow(0.05, dt);
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      
+      if (l > 0 && R.fuel > 0) {
+        R.fuel -= dt * 7;
+        const pAng = this.angle + Math.PI;
+        if (Math.random() < 0.6) {
+          E.particles.push({
+            x: this.x + Math.cos(pAng)*12, y: this.y + Math.sin(pAng)*12,
+            vx: -dx*rnd(20,50)+rnd(-15,15), vy: -dy*rnd(20,50)+rnd(-15,15),
+            life: rnd(0.4,1.2), color: 'rgba(180, 230, 255, 0.7)', size: rnd(1.5,3.5), isBubble: true
+          });
+        }
+      }
+    }
+  }
+}
+
+class AllyBot extends AstronautBase {
+  update(dt, scene) {
+    let dx = 0, dy = 0;
+    this.drilling = false; this.welding = false;
+    
+    // 1. Defesa (Atirar no inimigo mais próximo)
+    let nearestEn = null; let enDist = Infinity;
+    E.enemies.forEach(e => {
+      let d = dist2d(this.x, this.y, e.x, e.y);
+      if (d < enDist && !e.dead) { enDist = d; nearestEn = e; }
+    });
+    if (nearestEn && enDist < 300) {
+      this.angle = Math.atan2(nearestEn.y - this.y, nearestEn.x - this.x);
+      if (this.fireCooldown <= 0) {
+         this.fireCooldown = 0.5;
+         E.bullets.push(new Bullet(this.x, this.y, Math.cos(this.angle), Math.sin(this.angle), true));
+      }
+    }
+    this.fireCooldown -= dt;
+
+    // 2. Tarefas de Missão
+    let moving = false;
+    if (scene === 'SURFACE') {
+      let nearestCry = null; let cryDist = Infinity;
+      E.crystalNodes.forEach(c => {
+         if(!c.depleted) { let d = dist2d(this.x, this.y, c.x, c.y); if(d < cryDist) { cryDist=d; nearestCry=c; } }
+      });
+      if (nearestCry) {
+        if (cryDist > 45) {
+           dx = nearestCry.x - this.x; dy = nearestCry.y - this.y; moving = true;
+        } else {
+           this.drilling = true;
+           if (!nearestEn) this.angle = Math.atan2(nearestCry.y - this.y, nearestCry.x - this.x);
+           nearestCry.integrity -= dt * 22; // Bot perfura um pouco mais devagar
+           if(Math.random()<0.1) E._spawnParts(nearestCry.x, nearestCry.y, 'rgba(255,100,255,0.8)', 1, 'SURFACE');
+           if (nearestCry.integrity <= 0) {
+             nearestCry.depleted = true; R.crystal++;
+             E._spawnParts(nearestCry.x, nearestCry.y, 'rgba(255,0,200,0.9)', 14, 'SURFACE');
+             if (R.crystal >= 3) {
+               const infGain = 10 + Math.floor(S.infection * 0.12) + Math.floor(Math.random() * 8);
+               Game.missionReturn(R.crystal, infGain);
+             }
+           }
+        }
+      } else {
+        // Segue o player se não tiver minério
+        let distP = dist2d(this.x, this.y, E.player.x, E.player.y);
+        if (distP > 100) { dx = E.player.x - this.x; dy = E.player.y - this.y; moving = true; }
+      }
+    } else {
+      let nearestBio = null; let bioDist = Infinity;
+      E.biofilms.forEach(b => {
+         if(!b.dead) { let d = dist2d(this.x, this.y, b.x, b.y); if(d < bioDist) { bioDist=d; nearestBio=b; } }
+      });
+      if (nearestBio) {
+        if (bioDist > nearestBio.sz + 15) {
+           dx = nearestBio.x - this.x; dy = nearestBio.y - this.y; moving = true;
+        } else {
+           this.welding = true;
+           if (!nearestEn) this.angle = Math.atan2(nearestBio.y - this.y, nearestBio.x - this.x);
+           nearestBio.hp -= dt * 45;
+           if(Math.random()<0.1) E._spawnParts(nearestBio.x, nearestBio.y, 'rgba(0,255,204,0.8)', 1, 'SPACE');
+           if (nearestBio.hp <= 0) {
+             nearestBio.dead = true; E.bioRemovedRun++; E.biofilms = E.biofilms.filter(b => !b.dead);
+           }
+        }
+      } else {
+        let distP = dist2d(this.x, this.y, E.player.x, E.player.y);
+        if (distP > 100) { dx = E.player.x - this.x; dy = E.player.y - this.y; moving = true; }
+      }
+    }
+
+    // Movimentação
+    if (moving && !nearestEn) this.angle = Math.atan2(dy, dx);
+    let l = Math.sqrt(dx*dx + dy*dy) || 1;
+    if (moving) { dx /= l; dy /= l; }
+
+    if (scene === 'SURFACE') {
+       const spd = this.drilling ? 0 : 85;
+       this.x += dx * spd * dt; this.y += dy * spd * dt;
+       if (moving) {
+         this.walkT += dt * 14;
+         if (Math.random() < 0.1) E._spawnParts(this.x, this.y, 'rgba(120,150,180,0.5)', 1, 'SURFACE');
+       } else { this.walkT = lerp(this.walkT, Math.round(this.walkT/(Math.PI))*(Math.PI), dt*10); }
+    } else {
+       const thrust = 150;
+       this.vx += dx * thrust * dt; this.vy += dy * thrust * dt;
+       const spd = Math.sqrt(this.vx*this.vx+this.vy*this.vy);
+       if(spd > 130) { this.vx=this.vx/spd*130; this.vy=this.vy/spd*130; }
+       this.vx *= Math.pow(0.05, dt); this.vy *= Math.pow(0.05, dt);
+       this.x += this.vx * dt; this.y += this.vy * dt;
+       if (moving && Math.random() < 0.4) {
+          const pAng = this.angle + Math.PI;
+          E.particles.push({
+            x: this.x + Math.cos(pAng)*12, y: this.y + Math.sin(pAng)*12,
+            vx: -dx*rnd(20,50)+rnd(-15,15), vy: -dy*rnd(20,50)+rnd(-15,15),
+            life: rnd(0.4,1.0), color: 'rgba(180, 255, 230, 0.7)', size: rnd(1.5,3), isBubble: true
+          });
+       }
+    }
+  }
+}
+
+// ─── ALIEN FISH (SURFACE) ────────────────────────────────────
+class AlienFish {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.hp = 30 + (S.dives * 5);
+    this.dead = false;
+    this.speed = 100 + (S.dives * 8);
+    this.biteCooldown = rnd(0, 1.5);
+    this.wobble = rnd(0, Math.PI*2);
+    this.angle = 0;
+  }
+  update(dt, px, py) {
+    let dx = px - this.x, dy = py - this.y;
+    let dist = Math.sqrt(dx*dx+dy*dy) || 1;
+    
+    if (dist < 450) {
+      this.x += (dx/dist) * this.speed * dt;
+      this.y += (dy/dist) * this.speed * dt;
+      this.angle = Math.atan2(dy, dx);
+    }
+    
+    this.wobble += dt * 25;
+    this.biteCooldown -= dt;
+    if (dist < 25 && this.biteCooldown <= 0) {
+      this.biteCooldown = 1.0;
+      R.hp -= 15;
+      E._spawnParts(this.x, this.y, '#ff2244', 6, Game.scene);
+      flashFx('rgba(255,34,68,0.3)');
+      this.x -= (dx/dist)*25; this.y -= (dy/dist)*25;
+      if (R.hp <= 0) Game.over('Devorado pela fauna abissal de Encélado.', 'combat');
+    }
+  }
+  draw(ctx) {
+    if(this.dead) return;
+    ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+    const wag = Math.sin(this.wobble) * 6;
+    ctx.fillStyle = '#0d402b';
+    ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-24, -8 + wag); ctx.lineTo(-24, 8 + wag); ctx.fill();
+    ctx.fillStyle = '#165c3e';
+    ctx.beginPath(); ctx.ellipse(0, 0, 16, 7, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.moveTo(8, -3); ctx.lineTo(17, 0); ctx.lineTo(8, 3); ctx.fill();
+    ctx.fillStyle = '#ffaa00';
+    ctx.beginPath(); ctx.arc(6, -2, 2, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = 'rgba(255, 170, 0, 0.4)';
+    ctx.beginPath(); ctx.arc(6, -2, 5, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ─── ABYSSAL LEVIATHAN (SPACE / HULL) ────────────────────────
+class AbyssalLeviathan {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.hp = 120 + (S.dives * 15);
+    this.dead = false;
+    this.speed = 85 + (S.dives * 10);
+    this.wobble = rnd(0, Math.PI*2);
+    this.angle = 0;
+    this.biteCooldown = 0;
+  }
+  update(dt) {
+    let tx, ty, targetType;
+    let distToSub = dist2d(this.x, this.y, 512, 288);
+    let distToPl = dist2d(this.x, this.y, E.player.x, E.player.y);
+    
+    // Se o player estiver perto, foca no player, senão vai comer o submarino
+    if (distToPl < 250) { tx = E.player.x; ty = E.player.y; targetType = 'PLAYER'; }
+    else { tx = 512; ty = 288; targetType = 'SUB'; }
+
+    let dx = tx - this.x, dy = ty - this.y;
+    let dist = Math.sqrt(dx*dx+dy*dy) || 1;
+    
+    this.angle = Math.atan2(dy, dx);
+    this.wobble += dt * 15;
+
+    let attackRange = targetType === 'SUB' ? 180 : 30;
+
+    if (dist > attackRange) {
+      this.x += (dx/dist) * this.speed * dt;
+      this.y += (dy/dist) * this.speed * dt;
+    } else {
+      this.biteCooldown -= dt;
+      if (this.biteCooldown <= 0) {
+        this.biteCooldown = 1.0;
+        if (targetType === 'SUB') {
+          // Dreno lento no submarino
+          S.hull -= 1.5; 
+          flashFx('rgba(255,34,68,0.1)');
+          E._spawnParts(this.x + Math.cos(this.angle)*20, this.y + Math.sin(this.angle)*20, '#ff2244', 3, Game.scene);
+          if (S.hull <= 0) Game.over('O casco do Khepri-9 cedeu às mandíbulas dos Leviatãs.', 'hull');
+        } else {
+          // Dano no player
+          R.hp -= 20;
+          flashFx('rgba(255,34,68,0.3)');
+          E._spawnParts(this.x, this.y, '#ff2244', 6, Game.scene);
+          this.x -= (dx/dist)*20; this.y -= (dy/dist)*20; // pequeno recuo ao morder
+          if (R.hp <= 0) Game.over('O Leviatã Abissal estraçalhou seu escafandro.', 'combat');
+        }
+      }
+    }
+  }
+  draw(ctx) {
+    if(this.dead) return;
+    ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+    let wag = Math.sin(this.wobble)*10;
+    
+    // Corpo longo de enguia
+    ctx.fillStyle = '#0a1520';
+    ctx.beginPath();
+    ctx.moveTo(20, 0); 
+    ctx.lineTo(-10, 8); ctx.lineTo(-30, 4+wag); ctx.lineTo(-50, wag*1.5); 
+    ctx.lineTo(-30, -4+wag); ctx.lineTo(-10, -8); 
+    ctx.fill();
+    
+    // Barbatanas assustadoras
+    ctx.fillStyle = 'rgba(20,60,80,0.8)';
+    ctx.beginPath(); ctx.moveTo(-10, 8); ctx.lineTo(-20, 15+wag); ctx.lineTo(-25, 6+wag); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-10, -8); ctx.lineTo(-20, -15+wag); ctx.lineTo(-25, -6+wag); ctx.fill();
+    
+    // Cabeça chata
+    ctx.fillStyle = '#0f1c29';
+    ctx.beginPath(); ctx.ellipse(10, 0, 15, 10, 0, 0, Math.PI*2); ctx.fill();
+    
+    // Multiplos Olhos vermelhos
+    ctx.fillStyle = '#ff0044';
+    ctx.beginPath(); ctx.arc(15, -4, 2.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(10, -6, 1.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(15, 4, 2.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(10, 6, 1.5, 0, Math.PI*2); ctx.fill();
+    
+    // Dentes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.moveTo(20, 3); ctx.lineTo(26, 0); ctx.lineTo(20, -3); ctx.fill();
+    
+    ctx.restore();
+  }
+}
+
+// ─── CRYSTAL NODE (GELO -> CRISTAL) ─────────────────────────
+class CrystalNode {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.integrity = 100;
+    this.depleted = false;
+    this.verts = this._mkVerts();
+    this.t = Math.random() * 100;
+  }
+  _mkVerts() {
+    const pts = [];
+    const sides = Math.floor(rnd(6, 10));
+    for (let i = 0; i < sides; i++) {
+      const a = (i / sides) * Math.PI * 2;
+      const r = rnd(14, 24);
+      pts.push({ a, r });
+    }
+    return pts;
+  }
+  draw(ctx) {
+    if (this.depleted) return;
+    this.t += 0.015;
+    const p = this.integrity / 100;
+    const pulse = 1 + Math.sin(this.t * 2) * 0.08;
+
+    const g = ctx.createRadialGradient(this.x, this.y, 2, this.x, this.y, 35);
+    g.addColorStop(0, `rgba(255, 0, 200, ${p*0.5})`);
+    g.addColorStop(1, 'rgba(150, 0, 255, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(this.x, this.y, 35, 0, Math.PI*2); ctx.fill();
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.scale(pulse, pulse);
+    
+    ctx.beginPath();
+    this.verts.forEach((v, i) => {
+      const x = Math.cos(v.a) * v.r;
+      const y = Math.sin(v.a) * v.r;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = `rgba(200, 50, 255, ${p*0.65})`;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255, 150, 255, ${p*0.9})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.strokeStyle = `rgba(255, 200, 255, ${p*0.5})`;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+      const v1 = this.verts[i % this.verts.length];
+      const v2 = this.verts[(i+3) % this.verts.length];
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(v1.a)*v1.r*0.3, Math.sin(v1.a)*v1.r*0.3);
+      ctx.lineTo(Math.cos(v2.a)*v2.r, Math.sin(v2.a)*v2.r);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = `rgba(255, 200, 255, ${p*0.9})`;
+    ctx.beginPath(); ctx.arc(0, 0, 5*p, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+class Biofilm {
+  constructor(x, y, sz, type='surface') {
+    this.x = x; this.y = y;
+    this.sz = sz;
+    this.hp = 100;
+    this.dead = false;
+    this.type = type;
+    this.t = Math.random() * 100;
+    this.vx = rnd(-6, 6);
+    this.vy = rnd(-6, 6);
+    this.pts = [];
+    const segs = 7;
+    for (let i = 0; i < segs; i++) {
+      this.pts.push({ da: rnd(-0.35,0.35), dr: rnd(0.75,1.25) });
+    }
+  }
+
+  update(dt, px, py) {
+    this.t += dt;
+    if (this.type === 'surface') {
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      this.vx *= Math.pow(0.3, dt);
+      this.vy *= Math.pow(0.3, dt);
+    }
+  }
+
+  attractTo(px, py, spd, dt) {
+    const dx = px - this.x, dy = py - this.y;
+    const d = Math.sqrt(dx*dx+dy*dy) || 1;
+    this.vx += (dx/d) * spd * dt;
+    this.vy += (dy/d) * spd * dt;
+    const ms = 70;
+    const s = Math.sqrt(this.vx*this.vx+this.vy*this.vy);
+    if (s > ms) { this.vx=this.vx/s*ms; this.vy=this.vy/s*ms; }
+  }
+
+  draw(ctx) {
+    if (this.dead) return;
+    const pulse = Math.sin(this.t * 1.4) * 0.15 + 0.85;
+    const alpha = (this.hp / 100) * 0.72;
+    const segs = this.pts.length;
+    const sz = this.sz;
+
+    const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, sz*1.8);
+    g.addColorStop(0, `rgba(45,204,112,${alpha*0.22})`);
+    g.addColorStop(1, 'rgba(45,204,112,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(this.x, this.y, sz*1.8, 0, Math.PI*2); ctx.fill();
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.scale(pulse, 1/pulse * 0.95);
+    ctx.beginPath();
+    const baseAngle = this.t * 0.08;
+    for (let i = 0; i <= segs; i++) {
+      const idx = i % segs;
+      const a = (idx/segs)*Math.PI*2 + baseAngle + this.pts[idx].da;
+      const r = sz * this.pts[idx].dr;
+      const x = Math.cos(a) * r, y = Math.sin(a) * r;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = `rgba(15,55,35,${alpha})`;
+    ctx.fill();
+
+    ctx.strokeStyle = `rgba(45,204,112,${alpha*0.45})`;
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < 4; i++) {
+      const a1 = (i/4)*Math.PI*2;
+      const a2 = a1 + 1.1;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(
+        Math.cos(a1+0.4)*sz*0.55, Math.sin(a1+0.4)*sz*0.55,
+        Math.cos(a2)*sz*0.9, Math.sin(a2)*sz*0.9
+      );
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = `rgba(45,204,112,${alpha*0.55})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, sz*0.28*pulse, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+// ─── ENGINE ───────────────────────────────────────────────────
+const E = {
+  canvas: null, ctx: null, raf: null, t0: 0,
+  keys: {}, mx: 0, my: 0, mwx: 0, mwy: 0, mdown: false,
+  camX: 0, camY: 0,
+  player: null,
+  allies: [],
+  crystalNodes: [], biofilms: [], particles: [],
+  enemies: [], bullets: [],
+  bubbles: [], cracks: [],
+  subHullColls: [], 
+  WW: 2200, WH: 1100,
+  scannerTimer: 0,
+  bioRemovedRun: 0,
+  lightCanvas: null, lightCtx: null,
+
+  init() {
+    this.canvas = document.getElementById('c');
+    this.ctx = this.canvas.getContext('2d');
+    this.canvas.width  = 1024;
+    this.canvas.height = 576;
+
+    document.addEventListener('keydown', e => {
+      this.keys[e.code] = true;
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+      if (e.code === 'KeyF' && (Game.scene==='SURFACE'||Game.scene==='SPACE')) {
+        this.scannerTimer = 2.5;
+        this._showScanner();
+      }
+    });
+    document.addEventListener('keyup', e => { this.keys[e.code] = false; });
+
+    this.canvas.addEventListener('mousemove', e => {
+      const r = this.canvas.getBoundingClientRect();
+      const sx = this.canvas.width / r.width;
+      const sy = this.canvas.height / r.height;
+      this.mx = (e.clientX - r.left) * sx;
+      this.my = (e.clientY - r.top)  * sy;
+    });
+    this.canvas.addEventListener('mousedown', () => this.mdown = true);
+    this.canvas.addEventListener('mouseup',   () => this.mdown = false);
+
+    for (let i = 0; i < 180; i++) {
+      this.bubbles.push({
+        x: Math.random() * 2200,
+        y: Math.random() * 1100,
+        s: rnd(1, 4), speed: rnd(15, 60), offset: rnd(0, 10)
+      });
+    }
+
+    this.canvas.style.display = 'none';
+  },
+
+  initSurface() {
+    this.player = new Astronaut(this.WW*0.5, this.WH*0.5);
+    this.camX = 0; this.camY = 0;
+    this.bioRemovedRun = 0;
+
+    // Adiciona o Bot Aliado
+    this.allies = [new AllyBot(this.WW*0.5 + 40, this.WH*0.5 + 40)];
+
+    this.crystalNodes = [];
+    const gridX = 5, gridY = 3;
+    for (let gx = 0; gx < gridX; gx++) {
+      for (let gy = 0; gy < gridY; gy++) {
+        const x = rnd(200 + gx * 380, 400 + gx * 380);
+        const y = rnd(250 + gy * 250, 400 + gy * 250);
+        this.crystalNodes.push(new CrystalNode(x, y));
+      }
+    }
+
+    this.biofilms = [];
+    const numBio = Math.max(2, Math.floor(S.infection / 15) + 2);
+    for (let i = 0; i < numBio; i++) {
+      this.biofilms.push(new Biofilm(rnd(150, this.WW - 150), rnd(250, this.WH - 100), rnd(18, 38), 'surface'));
+    }
+
+    this.enemies = [];
+    this.bullets = [];
+    const numFishes = 2 + S.dives * 2;
+    for (let i = 0; i < numFishes; i++) {
+      this.enemies.push(new AlienFish(rnd(100, this.WW - 100), rnd(100, this.WH - 100)));
+    }
+
+    this.cracks = [];
+    for (let i = 0; i < 40; i++) {
+      const pts = [];
+      let cx = rnd(0, this.WW), cy = rnd(200, this.WH);
+      let a = rnd(0, Math.PI * 2);
+      pts.push({ x: cx, y: cy });
+      const steps = Math.floor(rnd(3, 9));
+      const segLen = rnd(20, 140) / steps;
+      for (let j = 0; j < steps; j++) {
+        a += rnd(-0.6, 0.6);
+        cx += Math.cos(a) * segLen; cy += Math.sin(a) * segLen * 0.4;
+        pts.push({ x: cx, y: cy });
+      }
+      this.cracks.push({ pts, alpha: rnd(0.04, 0.25), w: rnd(1, 3) });
+    }
+
+    this.particles = [];
+  },
+
+  initSpace() {
+    this.player = new Astronaut(512, 450);
+    this.camX = 0; this.camY = 0;
+    this.bioRemovedRun = 0;
+
+    // Adiciona o Bot Aliado
+    this.allies = [new AllyBot(512 + 60, 450)];
+
+    this.subHullColls = [
+      { x:512, y:288, w:280, h:80 }, 
+      { x:512, y:230, w:80,  h:40 },  
+      { x:350, y:288, w:50,  h:60 }   
+    ];
+
+    this.biofilms = [];
+    const numBio = Math.max(1, Math.floor(S.infection / 14) + 1);
+    for (let i = 0; i < numBio; i++) {
+      const a = rnd(0, Math.PI * 2);
+      const r = rnd(30, 120);
+      this.biofilms.push(new Biofilm(512 + Math.cos(a)*r, 288 + Math.sin(a)*r * 0.4, rnd(16,30), 'hull'));
+    }
+
+    this.enemies = [];
+    this.bullets = [];
+    // Spawn Leviathans instead of Rival Subs
+    const numMercs = 1 + Math.floor(S.dives / 2);
+    for(let i=0; i < numMercs; i++) {
+      this.enemies.push(new AbyssalLeviathan(512 + rnd(-600, 600), 288 + rnd(-500, 500)));
+    }
+
+    this.particles = [];
+  },
+
+  start() {
+    this.t0 = performance.now();
+    this.raf = requestAnimationFrame(t => this._loop(t));
+  },
+
+  stop() {
+    if (this.raf) { cancelAnimationFrame(this.raf); this.raf = null; }
+  },
+
+  _loop(t) {
+    const dt = Math.min((t - this.t0) / 1000, 0.05);
+    this.t0 = t;
+    this._update(dt);
+    this._draw();
+    this.raf = requestAnimationFrame(ts => this._loop(ts));
+  },
+
+  _update(dt) {
+    const tx = this.player.x - 512;
+    const ty = this.player.y - 288;
+    this.camX += (tx - this.camX) * 6 * dt;
+    this.camY += (ty - this.camY) * 6 * dt;
+    this.mwx = this.mx + this.camX;
+    this.mwy = this.my + this.camY;
+
+    this.player.update(dt, this.keys, this.mwx, this.mwy, Game.scene);
+    
+    // Atualiza os bots
+    this.allies.forEach(a => a.update(dt, Game.scene));
+
+    this.enemies.forEach(e => {
+      if (Game.scene === 'SPACE') e.update(dt);
+      else e.update(dt, this.player.x, this.player.y);
+    });
+
+    this.bullets.forEach(b => b.update(dt));
+    this.enemies = this.enemies.filter(e => !e.dead);
+    this.bullets = this.bullets.filter(b => !b.dead);
+
+    this.bubbles.forEach(b => {
+      b.y -= b.speed * dt;
+      b.x += Math.sin(b.y * 0.02 + b.offset) * 0.8;
+      if (b.y < -50) { b.y = this.WH + 50; b.x = rnd(0, this.WW); }
+    });
+
+    this.particles = this.particles.filter(p => {
+      p.x += p.vx*dt; p.y += p.vy*dt;
+      if (p.isBubble) { p.vy -= 120 * dt; p.x += Math.sin(p.life * 10) * 1.5; } 
+      else if (Game.scene === 'SURFACE') { p.vy += 40*dt; } 
+      else { p.vx *= 0.95; p.vy *= 0.95; }
+      p.life -= dt;
+      return p.life > 0;
+    });
+
+    this._checkCollisions();
+
+    if (this.scannerTimer > 0) {
+      this.scannerTimer -= dt;
+      if (this.scannerTimer <= 0) {
+        document.getElementById('scanner-hud').style.display = 'none';
+      }
+    }
+
+    if (Game.scene === 'SURFACE') this._updateSurface(dt);
+    else if (Game.scene === 'SPACE')   this._updateSpace(dt);
+  },
+
+  _checkCollisions() {
+    for (let b of this.bullets) {
+      if (b.dead) continue;
+      if (b.isPlayer) {
+        for (let e of this.enemies) {
+          if (dist2d(b.x, b.y, e.x, e.y) < 20) { 
+            e.hp -= 20;
+            b.dead = true;
+            if (e.hp <= 0) { e.dead = true; this._spawnParts(e.x, e.y, '#ffaa00', 10, Game.scene); }
+            else this._spawnParts(e.x, e.y, '#ffffff', 3, Game.scene);
+          }
+        }
+      } else {
+        if (dist2d(b.x, b.y, this.player.x, this.player.y) < 14) {
+          b.dead = true;
+          flashFx('rgba(255,34,68,0.2)');
+          if (Game.scene === 'SURFACE') {
+            R.hp -= 15;
+            if (R.hp <= 0) Game.over('Despedaçado pela fauna local.', 'combat');
+          } else {
+            // Not used, Leviathans bite instead of shoot now
+          }
+        }
+      }
+    }
+  },
+
+  _spawnParts(x, y, color, n=5, scene) {
+    for (let i = 0; i < n; i++) {
+      this.particles.push({
+        x, y,
+        vx: rnd(-50,50), vy: scene==='SURFACE' ? rnd(-70,-10) : rnd(-50,50),
+        life: rnd(0.3,0.7), color, size: rnd(1,3), isBubble: false
+      });
+    }
+  },
+
+  _showScanner() {
+    const sc = document.getElementById('scanner-hud');
+    sc.style.display = 'block';
+    const nearBio = this.biofilms.find(b => !b.dead && dist2d(b.x, b.y, this.player.x, this.player.y) < 200);
+    const localInf = Math.round(S.infection + (nearBio ? 20 : 0));
+    document.getElementById('sc-reading').textContent = localInf + '%';
+    const labels = ['LIMPO','TRAÇOS','ATIVO','CRÍTICO'];
+    const lIdx = Math.min(Math.floor(localInf/25), 3);
+    const lColors = ['var(--green)','var(--amber)','var(--amber)','var(--red)'];
+    document.getElementById('sc-label').textContent = 'FENÔMENO NADIR · ' + labels[lIdx];
+    document.getElementById('sc-label').style.color = lColors[lIdx];
+  },
+
+  _updateSurface(dt) {
+    this.player.x = clamp(this.player.x, 20, this.WW - 20);
+    this.player.y = clamp(this.player.y, 220, this.WH - 20);
+
+    R.bat -= dt * (this.player.drilling ? 2.5 : 0.4);
+    if (R.bat <= 0) { Game.over('A pressão abissal destruiu o traje sem energia térmica.', 'battery'); return; }
+
+    this.player.drilling = false;
+    this.biofilms.forEach(b => {
+      b.update(dt, this.player.x, this.player.y);
+      if (this.player.drilling || (this.keys['Space'])) {
+        b.attractTo(this.player.x, this.player.y, 45, dt);
+      } else if (dist2d(b.x,b.y,this.player.x,this.player.y) < 400) {
+        b.attractTo(this.player.x, this.player.y, 10, dt);
+      }
+      if (dist2d(b.x, b.y, this.player.x, this.player.y) < b.sz + 11) {
+        R.hp -= dt * 28;
+        flashFx('rgba(45,204,112,0.12)');
+        if (R.hp <= 0) { Game.over('Asfixia abissal: Biofilme rompeu a integridade do escafandro.', 'bio'); }
+      }
+    });
+
+    const near = this.crystalNodes.find(n => !n.depleted && dist2d(n.x, n.y, this.player.x, this.player.y) < 55);
+    
+    if (this.mdown && this.player.fireCooldown <= 0) {
+      if (near) {
+        this.player.drilling = true;
+        near.integrity -= dt * 38;
+        this._spawnParts(near.x, near.y, 'rgba(255,100,255,0.8)', 2, 'SURFACE');
+        
+        if (Math.random() < 0.014) {
+          this.biofilms.push(new Biofilm(this.player.x + rnd(-280,280), this.player.y + rnd(-280,280), rnd(18,32), 'surface'));
+        }
+        if (near.integrity <= 0) {
+          near.depleted = true;
+          R.crystal++;
+          this._spawnParts(near.x, near.y, 'rgba(255,0,200,0.9)', 14, 'SURFACE');
+          if (R.crystal >= 3) {
+            const infGain = 10 + Math.floor(S.infection * 0.12) + Math.floor(Math.random() * 8);
+            Game.missionReturn(R.crystal, infGain);
+          }
+        }
+      } else if (S.inv.kits > 0) {
+        this.player.fireCooldown = 0.25;
+        this.bullets.push(new Bullet(this.player.x, this.player.y, Math.cos(this.player.angle), Math.sin(this.player.angle), true));
+        this.player.x -= Math.cos(this.player.angle)*3;
+        this.player.y -= Math.sin(this.player.angle)*3;
+      }
+    }
+
+    document.getElementById('h-hp').style.width  = R.hp + '%';
+    document.getElementById('hv-hp').textContent  = Math.ceil(R.hp);
+    document.getElementById('h-bat').style.width  = R.bat + '%';
+    document.getElementById('hv-bat').textContent = Math.ceil(R.bat);
+    document.getElementById('hv-crystal').textContent = R.crystal + '/3';
+
+    const hpFill = document.getElementById('h-hp');
+    hpFill.className = 'hud-mini-fill ' + (R.hp>50?'f-cyan':R.hp>25?'f-amber':'f-red');
+
+    if (S.infection > 40) {
+      const t = performance.now() / 1000;
+      const va = (Math.sin(t*1.8)*0.5+0.5) * 0.12 * ((S.infection-40)/60);
+      flashFx(`rgba(45,204,112,${va})`);
+    }
+  },
+
+  _updateSpace(dt) {
+    this.biofilms.forEach(b => b.update(dt, this.player.x, this.player.y));
+
+    const nearBio = this.biofilms.find(b => !b.dead && dist2d(b.x,b.y,this.player.x,this.player.y) < b.sz+18);
+    
+    this.player.welding = false;
+    if (this.mdown && this.player.fireCooldown <= 0) {
+      if (nearBio) {
+        this.player.welding = true;
+        nearBio.hp -= dt * 65;
+        this._spawnParts(nearBio.x, nearBio.y, 'rgba(255,150,50,0.8)', 3, 'SPACE');
+        if (nearBio.hp <= 0) {
+          nearBio.dead = true;
+          this.bioRemovedRun++;
+          this.biofilms = this.biofilms.filter(b => !b.dead);
+        }
+      } else {
+        this.player.fireCooldown = 0.25;
+        this.bullets.push(new Bullet(this.player.x, this.player.y, Math.cos(this.player.angle), Math.sin(this.player.angle), true));
+        this.player.vx -= Math.cos(this.player.angle)*40; 
+        this.player.vy -= Math.sin(this.player.angle)*40;
+      }
+    }
+
+    this.subHullColls.forEach(c => {
+      const closestX = clamp(this.player.x, c.x - c.w/2, c.x + c.w/2);
+      const closestY = clamp(this.player.y, c.y - c.h/2, c.y + c.h/2);
+      if (dist2d(this.player.x, this.player.y, closestX, closestY) < 13) {
+        const nx = this.player.x - c.x, ny = this.player.y - c.y;
+        const nl = Math.sqrt(nx*nx+ny*ny) || 1;
+        this.player.vx = (nx/nl)*70; this.player.vy = (ny/nl)*70; 
+        // Colisão com submarino dá dano minúsculo, apenas punitivo
+        S.hull -= 0.5;
+        flashFx('rgba(255,34,68,0.1)');
+        if (S.hull <= 0) { Game.over('Você colidiu forte demais. Rachaduras cederam à pressão.', 'hull'); return; }
+      }
+    });
+
+    if (R.fuel <= 0 || this.biofilms.length === 0) {
+      Game.evaReturn(this.bioRemovedRun);
+    }
+
+    document.getElementById('h-fuel').style.width = R.fuel+'%';
+    document.getElementById('hv-fuel').textContent = Math.ceil(R.fuel);
+    document.getElementById('h-hull').style.width = S.hull+'%';
+    document.getElementById('hv-bio').textContent = this.biofilms.length;
+  },
+
+  _draw() {
+    const ctx = this.ctx;
+    const W = 1024, H = 576;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    if (Game.scene === 'SURFACE') this._drawSurface(ctx, W, H);
+    else if (Game.scene === 'SPACE') this._drawSpace(ctx, W, H);
+  },
+
+  _drawSurface(ctx, W, H) {
+    ctx.save();
+    ctx.translate(-this.camX, -this.camY);
+
+    const water = ctx.createLinearGradient(0, 0, 0, this.WH);
+    water.addColorStop(0, '#000812');
+    water.addColorStop(0.5, '#011020');
+    water.addColorStop(1, '#001a33');
+    ctx.fillStyle = water;
+    ctx.fillRect(0, 0, this.WW, this.WH);
+
+    const ground = ctx.createLinearGradient(0, 220, 0, this.WH);
+    ground.addColorStop(0, '#021526');
+    ground.addColorStop(0.25, '#010c18');
+    ground.addColorStop(1, '#000408');
+    ctx.fillStyle = ground;
+    ctx.fillRect(0, 220, this.WW, this.WH);
+
+    const hGlow = ctx.createLinearGradient(0, 210, 0, 270);
+    hGlow.addColorStop(0, 'rgba(40,160,220,0)');
+    hGlow.addColorStop(0.5, 'rgba(30,120,180,0.15)');
+    hGlow.addColorStop(1, 'rgba(20,80,140,0)');
+    ctx.fillStyle = hGlow;
+    ctx.fillRect(0, 210, this.WW, 60);
+
+    ctx.strokeStyle = 'rgba(50,140,200,0.2)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0,225); ctx.lineTo(this.WW,225); ctx.stroke();
+
+    this.cracks.forEach(c => {
+      ctx.strokeStyle = `rgba(255,100,0,${c.alpha})`;
+      ctx.lineWidth = c.w;
+      ctx.beginPath();
+      ctx.moveTo(c.pts[0].x, c.pts[0].y);
+      c.pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255,50,0,${c.alpha*0.3})`;
+      ctx.lineWidth = c.w * 4;
+      ctx.stroke();
+    });
+
+    this.bubbles.forEach(b => {
+      ctx.fillStyle = `rgba(180,220,255,0.15)`;
+      ctx.beginPath(); ctx.arc(b.x % this.WW, b.y, b.s, 0, Math.PI*2); ctx.fill();
+    });
+
+    this.particles.forEach(p => {
+      if (!p.isBubble) {
+        ctx.fillStyle = `rgba(0,0,0,${p.life*0.5})`;
+        ctx.fillRect(p.x, p.y + p.size + 2, p.size, p.size/2);
+      }
+    });
+
+    this.crystalNodes.forEach(n => n.draw(ctx));
+    this.biofilms.forEach(b => b.draw(ctx));
+    this.enemies.forEach(e => e.draw(ctx));
+    this.bullets.forEach(b => b.draw(ctx));
+
+    this.particles.forEach(p => {
+      ctx.globalAlpha = Math.min(1, p.life * 1.8);
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+      if(p.isBubble) {
+         ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth=0.5; ctx.stroke();
+      }
+    });
+    ctx.globalAlpha = 1;
+
+    ctx.restore(); 
+    
+    // Filtro de Escuridão
+    if (!this.lightCanvas) {
+      this.lightCanvas = document.createElement('canvas');
+      this.lightCtx = this.lightCanvas.getContext('2d');
+    }
+    this.lightCanvas.width = W;
+    this.lightCanvas.height = H;
+    const lctx = this.lightCtx;
+
+    lctx.fillStyle = 'rgba(0,5,15,0.95)';
+    lctx.fillRect(0, 0, W, H);
+    lctx.globalCompositeOperation = 'destination-out';
+
+    // Luz dos Bots (menor)
+    this.allies.forEach(a => {
+       const ax = a.x - this.camX, ay = a.y - this.camY;
+       const aAmb = lctx.createRadialGradient(ax,ay,0,ax,ay,50);
+       aAmb.addColorStop(0,'rgba(255,255,255,0.8)'); aAmb.addColorStop(1,'rgba(255,255,255,0)');
+       lctx.fillStyle = aAmb; lctx.beginPath(); lctx.arc(ax,ay,50,0,Math.PI*2); lctx.fill();
+       
+       const aCone = lctx.createRadialGradient(ax,ay,5,ax,ay,250);
+       aCone.addColorStop(0,'rgba(100,255,200,0.8)'); aCone.addColorStop(1,'rgba(100,255,200,0)');
+       lctx.fillStyle = aCone; lctx.beginPath(); lctx.moveTo(ax, ay);
+       lctx.arc(ax, ay, 250, a.angle-0.35, a.angle+0.35); lctx.closePath(); lctx.fill();
+    });
+
+    // Luz do Player
+    const px = this.player.x - this.camX;
+    const py = this.player.y - this.camY;
+    const amb = lctx.createRadialGradient(px,py,0,px,py,90);
+    amb.addColorStop(0,'rgba(255,255,255,0.9)');
+    amb.addColorStop(1,'rgba(255,255,255,0)');
+    lctx.fillStyle = amb; 
+    lctx.beginPath(); lctx.arc(px,py,90,0,Math.PI*2); lctx.fill();
+
+    const coneA = this.player.angle;
+    const coneSpan = 0.40;
+    const coneLen = 420;
+    const cone = lctx.createRadialGradient(px,py,15,px,py,coneLen);
+    cone.addColorStop(0,'rgba(200,240,255,1)');
+    cone.addColorStop(0.5,'rgba(200,240,255,0.6)');
+    cone.addColorStop(1,'rgba(200,240,255,0)');
+    lctx.fillStyle = cone;
+    lctx.beginPath();
+    lctx.moveTo(px, py);
+    lctx.arc(px, py, coneLen, coneA-coneSpan, coneA+coneSpan);
+    lctx.closePath();
+    lctx.fill();
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(this.lightCanvas, 0, 0);
+
+    ctx.save();
+    ctx.translate(-this.camX, -this.camY);
+    // Desenha entidades por cima do filtro
+    this.allies.forEach(a => a.draw(ctx, 'SURFACE', true));
+    this.player.draw(ctx, 'SURFACE');
+    ctx.restore();
+  },
+
+  _drawSpace(ctx, W, H) {
+    const water = ctx.createLinearGradient(0, 0, 0, H);
+    water.addColorStop(0, '#000812');
+    water.addColorStop(1, '#001a33');
+    ctx.fillStyle = water;
+    ctx.fillRect(0, 0, W, H);
+
+    this.bubbles.forEach(b => {
+      ctx.fillStyle = `rgba(180,220,255,0.25)`;
+      ctx.beginPath(); ctx.arc((b.x - this.camX*0.3) % this.WW, b.y, b.s*1.5, 0, Math.PI*2); ctx.fill();
+    });
+
+    ctx.save();
+    ctx.translate(-this.camX, -this.camY);
+
+    const infAlpha = S.infection / 100;
+    
+    // ── Desenhar o Submarino Khepri-9 Gigante ──
+    const subX = 512, subY = 288;
+    ctx.fillStyle = 'rgba(0,180,255,0.05)';
+    ctx.beginPath(); ctx.ellipse(subX, subY+40, 400, 150, 0, 0, Math.PI*2); ctx.fill();
+
+    ctx.fillStyle = '#111822';
+    ctx.strokeStyle = '#224455';
+    ctx.lineWidth = 4;
+    
+    ctx.beginPath(); ctx.moveTo(subX-140, subY-20); ctx.lineTo(subX-180, subY-40); ctx.lineTo(subX-180, subY+40); ctx.lineTo(subX-140, subY+20); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#0a1015'; ctx.fillRect(subX-190, subY-15, 10, 30); 
+    const spin = performance.now() * 0.02;
+    ctx.fillStyle = '#ffaa00'; ctx.fillRect(subX-195, subY - Math.sin(spin)*20, 4, 20); 
+    
+    ctx.fillStyle = '#16222f';
+    ctx.beginPath(); ctx.ellipse(subX, subY, 140, 40, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+    
+    ctx.beginPath(); ctx.roundRect(subX-20, subY-70, 60, 45, 10); ctx.fill(); ctx.stroke();
+    
+    ctx.strokeStyle = '#0a1015'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(subX-100, subY); ctx.lineTo(subX+100, subY); ctx.stroke();
+    
+    for(let i=0; i<4; i++) {
+        const lightOk = S.infection < 40 + i*15;
+        ctx.fillStyle = lightOk ? 'rgba(0,220,255,0.8)' : 'rgba(255,34,68,0.8)';
+        ctx.beginPath(); ctx.arc(subX - 50 + i*40, subY - 10, 6, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#000'; ctx.stroke();
+    }
+    
+    if (infAlpha > 0) {
+      ctx.fillStyle = `rgba(45,204,112,${infAlpha*0.3})`;
+      ctx.beginPath(); ctx.ellipse(subX, subY, 140, 40, 0, 0, Math.PI*2); ctx.fill();
+    }
+    
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '14px ' + "'Share Tech Mono', monospace";
+    ctx.fillText('KHEPRI-9', subX + 40, subY + 20);
+
+    this.biofilms.forEach(b => b.draw(ctx));
+    this.enemies.forEach(e => e.draw(ctx));
+    this.bullets.forEach(b => b.draw(ctx));
+
+    this.particles.forEach(p => {
+      ctx.globalAlpha = Math.min(1, p.life * 2);
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+
+    if (!this.lightCanvas) {
+      this.lightCanvas = document.createElement('canvas');
+      this.lightCtx = this.lightCanvas.getContext('2d');
+    }
+    this.lightCanvas.width = W;
+    this.lightCanvas.height = H;
+    const lctx = this.lightCtx;
+
+    lctx.fillStyle = 'rgba(0,8,20,0.85)';
+    lctx.fillRect(0, 0, W, H);
+    lctx.globalCompositeOperation = 'destination-out';
+
+    // Luz dos Bots (menor)
+    this.allies.forEach(a => {
+       const ax = a.x - this.camX, ay = a.y - this.camY;
+       const aAmb = lctx.createRadialGradient(ax,ay,0,ax,ay,60);
+       aAmb.addColorStop(0,'rgba(255,255,255,0.8)'); aAmb.addColorStop(1,'rgba(255,255,255,0)');
+       lctx.fillStyle = aAmb; lctx.beginPath(); lctx.arc(ax,ay,60,0,Math.PI*2); lctx.fill();
+       
+       const aCone = lctx.createRadialGradient(ax,ay,5,ax,ay,220);
+       aCone.addColorStop(0,'rgba(100,255,200,0.8)'); aCone.addColorStop(1,'rgba(100,255,200,0)');
+       lctx.fillStyle = aCone; lctx.beginPath(); lctx.moveTo(ax, ay);
+       lctx.arc(ax, ay, 220, a.angle-0.35, a.angle+0.35); lctx.closePath(); lctx.fill();
+    });
+
+    const px = this.player.x - this.camX;
+    const py = this.player.y - this.camY;
+
+    const amb = lctx.createRadialGradient(px,py,0,px,py,120);
+    amb.addColorStop(0,'rgba(255,255,255,0.8)');
+    amb.addColorStop(1,'rgba(255,255,255,0)');
+    lctx.fillStyle = amb; 
+    lctx.beginPath(); lctx.arc(px,py,120,0,Math.PI*2); lctx.fill();
+
+    const coneA = this.player.angle;
+    const coneSpan = 0.45;
+    const coneLen = 350;
+    const cone = lctx.createRadialGradient(px,py,10,px,py,coneLen);
+    cone.addColorStop(0,'rgba(255,255,255,0.9)');
+    cone.addColorStop(1,'rgba(255,255,255,0)');
+    lctx.fillStyle = cone;
+    lctx.beginPath();
+    lctx.moveTo(px, py);
+    lctx.arc(px, py, coneLen, coneA-coneSpan, coneA+coneSpan);
+    lctx.closePath();
+    lctx.fill();
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(this.lightCanvas, 0, 0);
+
+    ctx.save();
+    ctx.translate(-this.camX, -this.camY);
+    this.allies.forEach(a => a.draw(ctx, 'SPACE', true));
+    this.player.draw(ctx, 'SPACE');
+    ctx.restore();
+  }
+};
+
+// ─── BOOT ─────────────────────────────────────────────────────
+E.init();
+</script>
+</body>
+</html>
