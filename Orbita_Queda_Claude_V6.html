@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ÓRBITA & QUEDA — ENCÉLADO</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg:      #000810;
+  --cyan:    #00c8e8;
+  --green:   #00e886;
+  --amber:   #ffaa00;
+  --red:     #ff2244;
+  --bio:     #2dcc70;
+  --text:    #b8d4dc;
+  --dim:     #3a5a6a;
+  --panel:   rgba(0, 8, 20, 0.96);
+  --border:  rgba(0, 200, 232, 0.18);
+  --font:    'Share Tech Mono', 'Courier New', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+body {
+  background: #000;
+  color: var(--text);
+  font-family: var(--font);
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+#wrap {
+  position: relative;
+  width: min(100vw, calc(100vh * 16/9));
+  aspect-ratio: 16/9;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* Scanlines overlay */
+#wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px, transparent 2px,
+    rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px
+  );
+  pointer-events: none;
+  z-index: 200;
+}
+
+/* Vignette */
+#wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.75) 100%);
+  pointer-events: none;
+  z-index: 199;
+}
+
+canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  z-index: 10;
+}
+.screen.active { display: flex; }
+
+/* ─── BOOT ─────────────────────────────────────────────── */
+#s-boot {
+  background: var(--panel);
+  justify-content: center;
+  align-items: center;
+  pointer-events: auto;
+  gap: 0;
+}
+
+.boot-eyebrow {
+  color: var(--dim);
+  font-size: clamp(0.55rem, 0.9vw, 0.7rem);
+  letter-spacing: 5px;
+  margin-bottom: 6px;
+}
+.boot-title {
+  color: #ffffff;
+  font-size: clamp(2rem, 4.5vw, 3.8rem);
+  letter-spacing: 10px;
+  font-weight: normal;
+  line-height: 1;
+  text-shadow: 0 0 40px rgba(0,200,232,0.2);
+}
+.boot-sub {
+  color: var(--cyan);
+  font-size: clamp(0.6rem, 1vw, 0.8rem);
+  letter-spacing: 6px;
+  margin-top: 6px;
+  opacity: 0.7;
+}
+.boot-divider {
+  width: 320px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--dim), transparent);
+  margin: 22px 0;
+}
+.boot-lore {
+  max-width: 520px;
+  font-size: clamp(0.68rem, 1vw, 0.8rem);
+  color: #6a8a98;
+  line-height: 1.8;
+  text-align: left;
+  border-left: 2px solid var(--dim);
+  padding-left: 18px;
+  margin-bottom: 20px;
+}
+.boot-lore strong { color: var(--text); }
+.boot-controls {
+  font-size: clamp(0.58rem, 0.85vw, 0.7rem);
+  color: var(--dim);
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.boot-controls span { color: var(--cyan); }
+
+/* ─── BUTTONS ───────────────────────────────────────────── */
+.btn {
+  background: transparent;
+  color: var(--cyan);
+  border: 1px solid var(--cyan);
+  padding: 9px 22px;
+  font-size: clamp(0.65rem, 1vw, 0.78rem);
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background 0.12s, box-shadow 0.12s;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin: 4px;
+}
+.btn:hover:not(:disabled) {
+  background: var(--cyan);
+  color: #000810;
+  box-shadow: 0 0 14px rgba(0,200,232,0.35);
+}
+.btn:disabled { border-color: var(--dim); color: var(--dim); cursor: not-allowed; }
+.btn-amber { color: var(--amber); border-color: var(--amber); }
+.btn-amber:hover:not(:disabled) { background: var(--amber); color: #000; box-shadow: 0 0 14px rgba(255,170,0,0.35); }
+
+/* ─── STATION ────────────────────────────────────────────── */
+#s-station {
+  background: var(--panel);
+  pointer-events: auto;
+  justify-content: flex-start;
+}
+
+.stn-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.5);
+  flex-shrink: 0;
+}
+.stn-title {
+  color: #fff;
+  font-size: clamp(0.85rem, 1.6vw, 1.1rem);
+  letter-spacing: 5px;
+  font-weight: normal;
+}
+.stn-title span { color: var(--dim); font-size: 0.7em; }
+.stn-day {
+  color: var(--amber);
+  font-size: clamp(0.6rem, 0.9vw, 0.72rem);
+  letter-spacing: 2px;
+}
+
+.stn-body {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1fr;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.panel {
+  padding: 14px 16px;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+.panel:last-child { border-right: none; }
+
+.p-title {
+  color: var(--dim);
+  font-size: clamp(0.55rem, 0.8vw, 0.65rem);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(0,200,232,0.08);
+}
+
+/* Status bars */
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+  font-size: clamp(0.6rem, 0.85vw, 0.72rem);
+}
+.s-label { color: var(--dim); width: 88px; flex-shrink: 0; letter-spacing: 1px; }
+.s-pct { width: 30px; text-align: right; flex-shrink: 0; font-size: 0.95em; }
+.bar-track { flex: 1; height: 3px; background: rgba(255,255,255,0.05); }
+.bar-fill { height: 100%; transition: width 0.4s ease; }
+.f-cyan  { background: var(--cyan); }
+.f-green { background: var(--green); }
+.f-amber { background: var(--amber); }
+.f-red   { background: var(--red); }
+.f-bio   { background: var(--bio); }
+
+/* Inventory */
+.inv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  font-size: clamp(0.62rem, 0.88vw, 0.74rem);
+}
+.inv-row:last-child { border-bottom: none; }
+.inv-label { color: var(--dim); }
+.inv-val { color: #fff; font-size: 1.1em; }
+
+/* Mission box */
+.mission-box {
+  background: rgba(0,200,232,0.025);
+  border: 1px solid rgba(0,200,232,0.1);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.mission-label { color: var(--cyan); font-size: clamp(0.55rem, 0.75vw, 0.62rem); letter-spacing: 4px; margin-bottom: 6px; }
+.mission-text { font-size: clamp(0.6rem, 0.82vw, 0.72rem); color: #7090a0; line-height: 1.65; }
+
+/* Lore logs */
+#log-container { display: flex; flex-direction: column; gap: 5px; }
+.log-entry {
+  font-size: clamp(0.58rem, 0.8vw, 0.68rem);
+  line-height: 1.55;
+  padding: 7px 10px;
+  border-left: 2px solid var(--dim);
+  background: rgba(0,0,0,0.3);
+  color: #506070;
+}
+.log-entry.warn  { border-color: var(--amber); color: #907030; }
+.log-entry.alert { border-color: var(--red);   color: #903040; }
+.log-entry.ok    { border-color: var(--green);  color: #307050; }
+
+/* Protocol buttons */
+.proto-list { display: flex; flex-direction: column; gap: 5px; }
+.proto-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 11px;
+  font-family: var(--font);
+  font-size: clamp(0.6rem, 0.82vw, 0.72rem);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s, color 0.12s;
+  letter-spacing: 1px;
+}
+.proto-btn:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); background: rgba(0,200,232,0.04); }
+.proto-btn:disabled { color: var(--dim); cursor: not-allowed; }
+.proto-cost { color: var(--amber); margin-right: 6px; }
+
+/* Quick report */
+.report-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: clamp(0.58rem, 0.8vw, 0.68rem);
+  line-height: 2.1;
+}
+.report-row .lbl { color: var(--dim); }
+.report-row .val { color: var(--text); }
+
+/* Footer buttons */
+.stn-footer {
+  display: flex;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.stn-footer .btn {
+  flex: 1;
+  margin: 0;
+  border: none;
+  border-right: 1px solid var(--border);
+  padding: 12px 6px;
+  font-size: clamp(0.6rem, 0.9vw, 0.74rem);
+}
+.stn-footer .btn:last-child { border-right: none; }
+
+/* ─── HUD OVERLAY ────────────────────────────────────────── */
+#s-surf-hud, #s-space-hud {
+  pointer-events: none;
+}
+
+.hud-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 14px;
+  background: rgba(0,0,0,0.72);
+  border-bottom: 1px solid rgba(0,200,232,0.12);
+  font-size: clamp(0.6rem, 0.82vw, 0.68rem);
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+.hud-group { display: flex; gap: 16px; align-items: center; }
+.hud-stat { display: flex; align-items: center; gap: 6px; }
+.hud-stat .lbl { color: var(--dim); }
+.hud-mini { width: 54px; height: 3px; background: rgba(255,255,255,0.08); }
+.hud-mini-fill { height: 100%; transition: width 0.2s; }
+.hud-val { min-width: 24px; color: var(--text); }
+.hud-center { color: var(--cyan); font-size: 0.9em; letter-spacing: 3px; }
+
+.action-prompt {
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.82);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #fff;
+  padding: 5px 14px;
+  font-size: clamp(0.6rem, 0.85vw, 0.7rem);
+  letter-spacing: 2px;
+  display: none;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ─── SCANNER READOUT ───────────────────────────────────── */
+#scanner-hud {
+  position: absolute;
+  top: 14%;
+  right: 2%;
+  background: rgba(0,0,0,0.85);
+  border: 1px solid var(--bio);
+  padding: 10px 14px;
+  font-size: clamp(0.6rem, 0.82vw, 0.68rem);
+  letter-spacing: 2px;
+  display: none;
+  pointer-events: none;
+  z-index: 30;
+}
+#scanner-hud .sc-title { color: var(--bio); margin-bottom: 5px; }
+#scanner-hud .sc-val { color: #fff; font-size: 1.2em; }
+
+/* ─── GAME OVER ─────────────────────────────────────────── */
+#s-over {
+  background: rgba(0,2,8,0.97);
+  justify-content: center;
+  align-items: center;
+  pointer-events: auto;
+  text-align: center;
+}
+.over-eyebrow { color: var(--red); font-size: clamp(0.58rem, 0.85vw, 0.7rem); letter-spacing: 6px; margin-bottom: 10px; opacity: 0.8; }
+.over-title { color: #fff; font-size: clamp(1.4rem, 3vw, 2.2rem); letter-spacing: 5px; font-weight: normal; margin-bottom: 18px; }
+.over-report {
+  max-width: 460px;
+  text-align: left;
+  border: 1px solid rgba(255,34,68,0.18);
+  background: rgba(255,34,68,0.025);
+  padding: 14px 18px;
+  margin: 0 auto 20px;
+}
+.over-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: clamp(0.62rem, 0.88vw, 0.74rem);
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.over-row:last-child { border: none; margin-top: 8px; }
+.over-row .lbl { color: var(--dim); }
+.over-row .val { color: var(--text); }
+.over-note { color: var(--dim); font-size: clamp(0.58rem, 0.8vw, 0.68rem); line-height: 1.6; }
+
+/* ─── FLASH ─────────────────────────────────────────────── */
+#flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0;
+  transition: opacity 0.08s;
+}
+</style>
+</head>
+<body>
+
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="flash"></div>
+  <div id="scanner-hud">
+    <div class="sc-title">SCANNER BIO</div>
+    <div id="sc-reading" class="sc-val">—</div>
+    <div style="color:var(--dim);font-size:0.85em;margin-top:3px" id="sc-label">—</div>
+  </div>
+
+  <!-- ══ BOOT ══════════════════════════════════════════════ -->
+  <div id="s-boot" class="screen active">
+    <div class="boot-eyebrow">KHEPRI COLONIAL SYSTEMS · PROTOCOLO DE CAMPO</div>
+    <div class="boot-title">ÓRBITA & QUEDA</div>
+    <div class="boot-sub">OPERAÇÃO ENCÉLADO · ANO 2092 · E.C.</div>
+    <div class="boot-divider"></div>
+    <div class="boot-lore">
+      A estação <strong>Khepri-9</strong> opera em órbita de Encélado há 51 dias.<br>
+      Missão original: extração de gelo das plumas do polo sul para suporte de vida e propelente.<br><br>
+      Na última coleta, a perfuratriz térmica trouxe algo além de água.<br>
+      Estruturas biológicas. Coloniais. Ativas.<br><br>
+      <strong>A Helix Consortium quer amostras. O Diretório quer quarentena.</strong><br>
+      Ninguém perguntou o que você quer.
+    </div>
+    <div class="boot-controls">
+      <span>WASD</span> mover &nbsp;·&nbsp; <span>MOUSE</span> orientar &nbsp;·&nbsp; <span>CLIQUE</span> usar ferramenta &nbsp;·&nbsp; <span>F</span> scanner
+    </div>
+    <button class="btn" onclick="Game.start()">▶ INICIAR PROTOCOLO</button>
+  </div>
+
+  <!-- ══ STATION ════════════════════════════════════════════ -->
+  <div id="s-station" class="screen">
+    <div class="stn-header">
+      <div class="stn-title">KHEPRI-9 <span>// ÓRBITA DE ENCÉLADO</span></div>
+      <div class="stn-day" id="stn-day">DIA 01 — TURNO ALFA</div>
+    </div>
+
+    <div class="stn-body">
+      <!-- Coluna Esquerda: Sistemas -->
+      <div class="panel">
+        <div class="p-title">Sistemas da Estação</div>
+
+        <div class="stat-row">
+          <span class="s-label">CASCO</span>
+          <div class="bar-track"><div class="bar-fill f-cyan" id="b-hull" style="width:100%"></div></div>
+          <span class="s-pct" id="v-hull">100%</span>
+        </div>
+        <div class="stat-row">
+          <span class="s-label">CONTAMINAÇÃO</span>
+          <div class="bar-track"><div class="bar-fill f-bio" id="b-bio" style="width:0%"></div></div>
+          <span class="s-pct" id="v-bio" style="color:var(--bio)">0%</span>
+        </div>
+        <div class="stat-row">
+          <span class="s-label">SUPORTE VIDA</span>
+          <div class="bar-track"><div class="bar-fill f-green" id="b-life" style="width:100%"></div></div>
+          <span class="s-pct" id="v-life">100%</span>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div class="p-title">Inventário</div>
+          <div class="inv-row">
+            <span class="inv-label">GELO BRUTO (kg)</span>
+            <span class="inv-val" id="inv-ice">0</span>
+          </div>
+          <div class="inv-row">
+            <span class="inv-label">KITS DE REPARO</span>
+            <span class="inv-val" id="inv-kits">2</span>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div class="p-title">Relatório Rápido</div>
+          <div class="report-row"><span class="lbl">TURNO</span><span class="val" id="r-day">01</span></div>
+          <div class="report-row"><span class="lbl">DESCIDAS</span><span class="val" id="r-dives">0</span></div>
+          <div class="report-row"><span class="lbl">GELO TOTAL</span><span class="val" id="r-total">0</span></div>
+        </div>
+      </div>
+
+      <!-- Coluna Central: Missão + Logs -->
+      <div class="panel">
+        <div class="p-title">Central de Missão</div>
+        <div class="mission-box">
+          <div class="mission-label">BRIEFING ATUAL</div>
+          <div class="mission-text" id="m-brief">Aguardando autorização de missão...</div>
+        </div>
+        <div class="p-title">Logs de Bordo</div>
+        <div id="log-container"></div>
+      </div>
+
+      <!-- Coluna Direita: Protocolos -->
+      <div class="panel">
+        <div class="p-title">Protocolos</div>
+        <div class="proto-list">
+          <button class="proto-btn" id="btn-repair" onclick="Game.repair()">
+            <span class="proto-cost">[2 GELO]</span>REPARAR TRAJE EVA
+          </button>
+          <button class="proto-btn" id="btn-purge" onclick="Game.purge()">
+            <span class="proto-cost">[3 GELO]</span>PURGAR FILTROS BIO
+          </button>
+          <button class="proto-btn" id="btn-hull" onclick="Game.reinforceHull()">
+            <span class="proto-cost">[4 GELO]</span>REFORÇAR CASCO
+          </button>
+        </div>
+        <div style="margin-top:16px;">
+          <div class="p-title">Status Nadir</div>
+          <div id="nadir-status" style="font-size:clamp(0.58rem,0.8vw,0.68rem);color:var(--dim);line-height:1.8;">
+            Aguardando dados de campo...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stn-footer">
+      <button class="btn" onclick="Game.goSurface()">▼ DESCER À SUPERFÍCIE</button>
+      <button class="btn btn-amber" onclick="Game.goSpace()">◌ EVA — CASCO EXTERNO</button>
+    </div>
+  </div>
+
+  <!-- ══ SURFACE HUD ════════════════════════════════════════ -->
+  <div id="s-surf-hud" class="screen">
+    <div class="hud-top">
+      <div class="hud-group">
+        <div class="hud-stat">
+          <span class="lbl">TRAJE</span>
+          <div class="hud-mini"><div class="hud-mini-fill f-cyan" id="h-hp" style="width:100%"></div></div>
+          <span class="hud-val" id="hv-hp">100</span>
+        </div>
+        <div class="hud-stat">
+          <span class="lbl">BATERIA</span>
+          <div class="hud-mini"><div class="hud-mini-fill" id="h-bat" style="width:100%;background:var(--text)"></div></div>
+          <span class="hud-val" id="hv-bat">100</span>
+        </div>
+      </div>
+      <span class="hud-center">SUPERFÍCIE · ENCÉLADO</span>
+      <div class="hud-group">
+        <div class="hud-stat">
+          <span class="lbl">CILINDROS</span>
+          <span class="hud-val" style="color:#fff" id="hv-ice">0/3</span>
+        </div>
+      </div>
+    </div>
+    <div class="action-prompt" id="p-surf">SEGURE [CLIQUE] PARA PERFURAR</div>
+  </div>
+
+  <!-- ══ SPACE HUD ══════════════════════════════════════════ -->
+  <div id="s-space-hud" class="screen">
+    <div class="hud-top">
+      <div class="hud-group">
+        <div class="hud-stat">
+          <span class="lbl">JETPACK</span>
+          <div class="hud-mini"><div class="hud-mini-fill f-amber" id="h-fuel" style="width:100%"></div></div>
+          <span class="hud-val" id="hv-fuel">100</span>
+        </div>
+        <div class="hud-stat">
+          <span class="lbl">CASCO</span>
+          <div class="hud-mini"><div class="hud-mini-fill f-cyan" id="h-hull" style="width:100%"></div></div>
+        </div>
+      </div>
+      <span class="hud-center" style="color:var(--amber)">EVA EXTERNO · ZONA DE RADIAÇÃO</span>
+      <div class="hud-group">
+        <div class="hud-stat">
+          <span class="lbl">BIOFILME</span>
+          <span class="hud-val" style="color:var(--bio)" id="hv-bio">0</span>
+        </div>
+      </div>
+    </div>
+    <div class="action-prompt" id="p-space">SEGURE [CLIQUE] PARA SOLDAR BIOFILME</div>
+  </div>
+
+  <!-- ══ GAME OVER ══════════════════════════════════════════ -->
+  <div id="s-over" class="screen">
+    <div class="over-eyebrow">— RELATÓRIO DE INCIDENTE — KHEPRI-9 —</div>
+    <div class="over-title" id="o-title">FALHA OPERACIONAL</div>
+    <div class="over-report">
+      <div class="over-row"><span class="lbl">OPERADOR</span><span class="val">OP-ALFA · DESCIDA AUTORIZADA</span></div>
+      <div class="over-row"><span class="lbl">DIA DE OPERAÇÃO</span><span class="val" id="o-day">—</span></div>
+      <div class="over-row"><span class="lbl">DESCIDAS REALIZADAS</span><span class="val" id="o-dives">—</span></div>
+      <div class="over-row"><span class="lbl">GELO COLETADO</span><span class="val" id="o-ice">—</span></div>
+      <div class="over-row"><span class="lbl">CAUSA DA FALHA</span><span class="val" id="o-cause">—</span></div>
+      <div class="over-row">
+        <span class="over-note" id="o-note">Registro enviado ao Diretório de Segurança Orbital.</span>
+      </div>
+    </div>
+    <button class="btn" onclick="Game.start()">↺ REINICIAR OPERAÇÃO</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   ÓRBITA & QUEDA — V3
+   Arquivo único. Preserva mecânicas do V2, dramaticamente
+   melhorado em arte, narrativa e atmosfera.
+══════════════════════════════════════════════════════════════ */
+
+// ─── UTILS ────────────────────────────────────────────────────
+const rnd    = (lo, hi) => lo + Math.random() * (hi - lo);
+const clamp  = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const lerp   = (a, b, t) => a + (b - a) * t;
+const dist2d = (ax, ay, bx, by) => Math.sqrt((ax-bx)**2 + (ay-by)**2);
+
+// ─── STATE ────────────────────────────────────────────────────
+const S = {          // Persistent campaign state
+  day: 1,
+  dives: 0,
+  totalIce: 0,
+  bioRemoved: 0,
+  inv: { ice: 0, kits: 2 },
+  hull: 100,
+  infection: 0,
+  life: 100,
+  logs: [],
+  logIdx: 0
+};
+
+const R = {          // Transient run state
+  hp: 100, bat: 100, fuel: 100, ice: 0,
+  reset() { this.hp=100; this.bat=100; this.fuel=100; this.ice=0; }
+};
+
+// ─── NARRATIVE DATA ───────────────────────────────────────────
+const LORE = [
+  { c:'ok',    t:'Rotação 01 — Todos os sistemas nominais. Extração de gelo autorizada pelo Protocolo Khepri. Missão: sustentar reservas de H₂O e propelente para órbita estável.' },
+  { c:'',      t:'Rotação 02 — Amostra #004 apresenta vestígios orgânicos. Origem: indeterminada. Helix solicita análise completa. Operações continuam normalmente.' },
+  { c:'warn',  t:'Rotação 03 — Leitura inconsistente no setor de filtragem. Biofilme visível na junta da Câmara 4. Manutenção solicitada. Resposta Helix: "sem urgência operacional".' },
+  { c:'warn',  t:'Rotação 04 — AVISO: Crescimento anômalo no reservatório B. Padrão não reconhecido pelo sistema de contenção. Helix instrui: monitorar. Não purgar.' },
+  { c:'alert', t:'Rotação 05 — O organismo respondeu a pulso elétrico de forma não-aleatória. Estrutura colonial confirmada. Registro provisório: FENÔMENO NADIR.' },
+  { c:'alert', t:'Rotação 06 — Câmara 7 inacessível. T.int +2°C acima do nominal. O Nadir usa calor residual como vetor. Quarentena solicitada. Recusada pela Helix.' },
+  { c:'alert', t:'Rotação 07 — A estação está comprometida. O Nadir atravessou três módulos. Diretório não responde. Helix quer amostras vivas. Eu quero sair daqui.' },
+];
+
+const BRIEFS = [
+  'Descida de coleta autorizada. Objetivo: 3 cilindros de gelo no setor sul. Temperatura externa: -201°C. Atenção a variações sísmicas nas fraturas.',
+  'AVISO: Leituras biológicas anômalas na zona de coleta. Colete amostras e retorne. Minimize contato com substâncias escuras no gelo.',
+  'Helix reclassificou a área como "zona de interesse astrobiológico". Coleta continua. Relatório de campo obrigatório ao retornar.',
+  'Biofilme detectado em casco externo. Recomenda-se EVA de manutenção antes de nova descida. Risco de dano estrutural acumulado.',
+  'Situação crítica. Colete o mínimo necessário para suporte de vida. Evite concentrações de Nadir. Prioridade: retornar com vida.',
+];
+
+const NADIR_STATUS = [
+  'Nenhuma atividade confirmada. Anomalia em investigação.',
+  'Vestígios orgânicos detectados em amostras. Origem: desconhecida.',
+  'Biofilme colonial ativo. Reage a calor e eletricidade.',
+  'NADIR CONFIRMADO. Infiltração em sistemas internos em progresso.',
+  'ALERTA CRÍTICO: Nadir atravessou biocontenção. Múltiplos setores comprometidos.',
+];
+
+const OVER_TITLES = ['OPERADOR PERDIDO','FALHA DE CONTENÇÃO','INCIDENTE NADIR','COLAPSO ESTRUTURAL','PROTOCOLO ABANDONADO'];
+const OVER_NOTES = {
+  bio:     'O Nadir usa calor corporal como vetor primário de infecção. Contato direto é fatal em menos de 90 segundos.',
+  battery: 'Sem energia, a temperatura do traje caiu para -201°C. Hipotermia imediata. Registro: sem sofrimento.',
+  hull:    'Falha estrutural do casco. Descompressão em 4.2 segundos. O vácuo não perdoa.',
+  life:    'Sistemas de suporte de vida colapsaram. O Nadir ocupou os dutos de ventilação da Khepri-9.',
+  default: 'O Diretório de Segurança Orbital foi notificado. A Helix considerará a missão "parcialmente bem-sucedida".'
+};
+
+// ─── GAME CONTROLLER ──────────────────────────────────────────
+const Game = {
+  scene: 'BOOT',
+
+  start() {
+    Object.assign(S, {
+      day:1, dives:0, totalIce:0, bioRemoved:0,
+      inv:{ice:0,kits:2}, hull:100, infection:0, life:100,
+      logs:[], logIdx:0
+    });
+    this.goStation();
+  },
+
+  goStation() {
+    this.scene = 'STATION';
+    E.stop();
+    this._updateStation();
+    show('s-station');
+  },
+
+  goSurface() {
+    this.scene = 'SURFACE';
+    S.dives++;
+    R.reset();
+    E.initSurface();
+    show('s-surf-hud');
+    E.start();
+  },
+
+  goSpace() {
+    this.scene = 'SPACE';
+    R.reset();
+    E.initSpace();
+    show('s-space-hud');
+    E.start();
+  },
+
+  missionReturn(iceGot, infGain) {
+    E.stop();
+    S.inv.ice += iceGot;
+    S.totalIce += iceGot;
+    S.infection = clamp(S.infection + infGain, 0, 100);
+    S.life = clamp(100 - S.infection * 0.65, 5, 100);
+    S.day++;
+    if (S.logIdx < LORE.length) S.logs.unshift(LORE[S.logIdx++]);
+    if (S.logs.length > 4) S.logs.pop();
+    if (S.infection >= 100) { this.over('Contaminação total. Suporte de vida comprometido.', 'life'); return; }
+    this.goStation();
+  },
+
+  evaReturn(removed) {
+    E.stop();
+    S.bioRemoved += removed;
+    S.hull = clamp(S.hull + removed * 3, 0, 100);
+    S.infection = clamp(S.infection - removed * 4, 0, 100);
+    S.life = clamp(100 - S.infection * 0.65, 5, 100);
+    S.day++;
+    this.goStation();
+  },
+
+  repair() {
+    if (S.inv.ice < 2) return;
+    S.inv.ice -= 2; S.inv.kits = clamp(S.inv.kits + 1, 0, 5);
+    this._updateStation();
+  },
+
+  purge() {
+    if (S.inv.ice < 3) return;
+    S.inv.ice -= 3; S.infection = clamp(S.infection - 22, 0, 100);
+    S.life = clamp(100 - S.infection * 0.65, 5, 100);
+    this._updateStation();
+  },
+
+  reinforceHull() {
+    if (S.inv.ice < 4) return;
+    S.inv.ice -= 4; S.hull = clamp(S.hull + 28, 0, 100);
+    this._updateStation();
+  },
+
+  over(cause, type='default') {
+    E.stop();
+    const note = OVER_NOTES[type] || OVER_NOTES.default;
+    setText('o-title', OVER_TITLES[Math.floor(Math.random() * OVER_TITLES.length)]);
+    setText('o-day', String(S.day));
+    setText('o-dives', String(S.dives));
+    setText('o-ice', S.totalIce + ' kg');
+    setText('o-cause', cause);
+    setText('o-note', note);
+    show('s-over');
+  },
+
+  _updateStation() {
+    const si = clamp(S.infection, 0, 100);
+    setText('stn-day', `DIA ${pad(S.day)} — TURNO ALFA`);
+
+    setBar('b-hull', S.hull, S.hull>50?'f-cyan':S.hull>25?'f-amber':'f-red');
+    setText('v-hull', Math.round(S.hull)+'%');
+
+    setBar('b-bio', si, 'f-bio');
+    const bioEl = document.getElementById('v-bio');
+    bioEl.textContent = Math.round(si)+'%';
+    bioEl.style.color = si>60?'var(--red)':si>30?'var(--amber)':'var(--bio)';
+
+    setBar('b-life', S.life, S.life>60?'f-green':S.life>30?'f-amber':'f-red');
+    setText('v-life', Math.round(S.life)+'%');
+
+    setText('inv-ice', S.inv.ice);
+    setText('inv-kits', S.inv.kits);
+    setText('r-day', pad(S.day));
+    setText('r-dives', S.dives);
+    setText('r-total', S.totalIce+' kg');
+
+    const bIdx = Math.min(S.day - 1, BRIEFS.length - 1);
+    setText('m-brief', BRIEFS[bIdx]);
+
+    const nadirIdx = Math.min(Math.floor(si / 22), NADIR_STATUS.length - 1);
+    const nadirEl = document.getElementById('nadir-status');
+    nadirEl.textContent = NADIR_STATUS[nadirIdx];
+    nadirEl.style.color = si > 44 ? (si > 66 ? 'var(--red)' : 'var(--amber)') : 'var(--dim)';
+
+    const logCont = document.getElementById('log-container');
+    logCont.innerHTML = '';
+    const logsToShow = S.logs.length ? S.logs : [LORE[0]];
+    logsToShow.slice(0, 4).forEach(l => {
+      const el = document.createElement('div');
+      el.className = 'log-entry ' + (l.c||'');
+      el.textContent = l.t;
+      logCont.appendChild(el);
+    });
+
+    disableBtn('btn-repair', S.inv.ice < 2);
+    disableBtn('btn-purge',  S.inv.ice < 3);
+    disableBtn('btn-hull',   S.inv.ice < 4);
+  }
+};
+
+// helpers
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const canvas = document.getElementById('c');
+  canvas.style.display = (id === 's-surf-hud' || id === 's-space-hud') ? 'block' : 'none';
+}
+function setText(id, v) { const el = document.getElementById(id); if(el) el.textContent = v; }
+function setBar(id, pct, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.style.width = clamp(pct,0,100)+'%';
+  el.className = 'bar-fill ' + cls;
+}
+function disableBtn(id, dis) { const el=document.getElementById(id); if(el) el.disabled = dis; }
+function pad(n) { return String(n).padStart(2,'0'); }
+function flashFx(color) {
+  const el = document.getElementById('flash');
+  el.style.background = color; el.style.opacity = '1';
+  setTimeout(()=>el.style.opacity='0', 90);
+}
+
+// ─── ENTITIES ─────────────────────────────────────────────────
+class Player {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.vx = 0; this.vy = 0;
+    this.angle = 0;
+    this.drilling = false;
+    this.welding = false;
+    this.thrustPts = [];
+  }
+
+  update(dt, keys, mx, my, scene) {
+    let dx = 0, dy = 0;
+    if (keys['KeyW'] || keys['ArrowUp'])    dy = -1;
+    if (keys['KeyS'] || keys['ArrowDown'])  dy =  1;
+    if (keys['KeyA'] || keys['ArrowLeft'])  dx = -1;
+    if (keys['KeyD'] || keys['ArrowRight']) dx =  1;
+    const l = Math.sqrt(dx*dx + dy*dy);
+    if (l > 0) { dx /= l; dy /= l; }
+    this.angle = Math.atan2(my - this.y, mx - this.x);
+
+    if (scene === 'SURFACE') {
+      const spd = this.drilling ? 55 : 115;
+      this.x += dx * spd * dt;
+      this.y += dy * spd * dt;
+    } else {
+      // Inertial space movement
+      const thrust = 220;
+      this.vx += dx * thrust * dt;
+      this.vy += dy * thrust * dt;
+      const spd = Math.sqrt(this.vx*this.vx+this.vy*this.vy);
+      const maxSpd = 180;
+      if (spd > maxSpd) { this.vx = this.vx/spd*maxSpd; this.vy = this.vy/spd*maxSpd; }
+      this.vx *= Math.pow(0.18, dt);
+      this.vy *= Math.pow(0.18, dt);
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      if (l > 0) {
+        R.fuel -= dt * 9;
+        this.thrustPts.push({
+          x:this.x, y:this.y,
+          vx: -dx*rnd(30,70)+rnd(-20,20),
+          vy: -dy*rnd(30,70)+rnd(-20,20),
+          life: rnd(0.25,0.55), maxLife: 0.55
+        });
+      }
+    }
+    this.thrustPts = this.thrustPts.filter(p => {
+      p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt;
+      return p.life > 0;
+    });
+  }
+
+  draw(ctx, scene) {
+    // Thrust particles
+    this.thrustPts.forEach(p => {
+      ctx.globalAlpha = (p.life/p.maxLife) * 0.55;
+      ctx.fillStyle = '#00c8e8';
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle + Math.PI/2);
+
+    // Body
+    ctx.fillStyle = scene==='SURFACE' ? '#bcd4e0' : '#98b8ca';
+    ctx.beginPath();
+    ctx.ellipse(0, 1, 7, 10, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Backpack
+    ctx.fillStyle = scene==='SURFACE' ? '#8aa8ba' : '#708898';
+    ctx.fillRect(-4, 3, 8, 6);
+
+    // Helmet
+    ctx.fillStyle = scene==='SURFACE' ? '#d4eaf6' : '#b4d0e2';
+    ctx.beginPath(); ctx.arc(0, -4, 6, 0, Math.PI*2); ctx.fill();
+
+    // Visor glow
+    ctx.fillStyle = 'rgba(0,200,232,0.32)';
+    ctx.beginPath();
+    ctx.arc(0, -4, 4, -Math.PI*0.65, Math.PI*0.15);
+    ctx.fill();
+
+    // Action indicator
+    if (this.drilling || this.welding) {
+      ctx.fillStyle = this.drilling ? '#d4f0ff' : '#ffaa00';
+      ctx.beginPath(); ctx.arc(0, -12, 2.5, 0, Math.PI*2); ctx.fill();
+    }
+
+    ctx.restore();
+  }
+}
+
+class IceNode {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.integrity = 100;
+    this.depleted = false;
+    this.verts = this._mkVerts();
+    this.t = Math.random() * 100;
+  }
+  _mkVerts() {
+    const pts = [];
+    const sides = Math.floor(rnd(5, 9));
+    for (let i = 0; i < sides; i++) {
+      const a = (i / sides) * Math.PI * 2;
+      const r = rnd(12, 20);
+      pts.push({ a, r });
+    }
+    return pts;
+  }
+  draw(ctx) {
+    if (this.depleted) return;
+    this.t += 0.015;
+    const p = this.integrity / 100;
+    const pulse = 1 + Math.sin(this.t * 1.2) * 0.05;
+
+    // Outer glow
+    const g = ctx.createRadialGradient(this.x, this.y, 2, this.x, this.y, 28);
+    g.addColorStop(0, `rgba(160,220,255,${p*0.4})`);
+    g.addColorStop(1, 'rgba(80,160,220,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(this.x, this.y, 28, 0, Math.PI*2); ctx.fill();
+
+    // Crystal body
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.scale(pulse, pulse);
+    ctx.beginPath();
+    this.verts.forEach((v, i) => {
+      const x = Math.cos(v.a) * v.r;
+      const y = Math.sin(v.a) * v.r;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = `rgba(180,230,255,${p*0.55})`;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(200,240,255,${p*0.85})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Inner facets
+    ctx.strokeStyle = `rgba(255,255,255,${p*0.3})`;
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 3; i++) {
+      const v1 = this.verts[i % this.verts.length];
+      const v2 = this.verts[(i+2) % this.verts.length];
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(v1.a)*v1.r*0.4, Math.sin(v1.a)*v1.r*0.4);
+      ctx.lineTo(Math.cos(v2.a)*v2.r, Math.sin(v2.a)*v2.r);
+      ctx.stroke();
+    }
+
+    // Core sparkle
+    ctx.fillStyle = `rgba(240,250,255,${p*0.8})`;
+    ctx.beginPath(); ctx.arc(0, 0, 4*p, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+class Biofilm {
+  constructor(x, y, sz, type='surface') {
+    this.x = x; this.y = y;
+    this.sz = sz;
+    this.hp = 100;
+    this.dead = false;
+    this.type = type;
+    this.t = Math.random() * 100;
+    this.vx = rnd(-6, 6);
+    this.vy = rnd(-6, 6);
+    // Pre-generate blob shape control points
+    this.pts = [];
+    const segs = 7;
+    for (let i = 0; i < segs; i++) {
+      this.pts.push({ da: rnd(-0.35,0.35), dr: rnd(0.75,1.25) });
+    }
+  }
+
+  update(dt, px, py) {
+    this.t += dt;
+    if (this.type === 'surface') {
+      const d = dist2d(this.x, this.y, px, py);
+      // Heat-seek if drilling (handled externally via flag)
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      // Gentle drift damping
+      this.vx *= Math.pow(0.3, dt);
+      this.vy *= Math.pow(0.3, dt);
+    }
+  }
+
+  attractTo(px, py, spd, dt) {
+    const dx = px - this.x, dy = py - this.y;
+    const d = Math.sqrt(dx*dx+dy*dy) || 1;
+    this.vx += (dx/d) * spd * dt;
+    this.vy += (dy/d) * spd * dt;
+    const ms = 70;
+    const s = Math.sqrt(this.vx*this.vx+this.vy*this.vy);
+    if (s > ms) { this.vx=this.vx/s*ms; this.vy=this.vy/s*ms; }
+  }
+
+  draw(ctx) {
+    if (this.dead) return;
+    const pulse = Math.sin(this.t * 1.4) * 0.15 + 0.85;
+    const alpha = (this.hp / 100) * 0.72;
+    const segs = this.pts.length;
+    const sz = this.sz;
+
+    // Outer glow
+    const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, sz*1.8);
+    g.addColorStop(0, `rgba(45,204,112,${alpha*0.22})`);
+    g.addColorStop(1, 'rgba(45,204,112,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(this.x, this.y, sz*1.8, 0, Math.PI*2); ctx.fill();
+
+    // Blob body
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.scale(pulse, 1/pulse * 0.95);
+    ctx.beginPath();
+    const baseAngle = this.t * 0.08;
+    for (let i = 0; i <= segs; i++) {
+      const idx = i % segs;
+      const a = (idx/segs)*Math.PI*2 + baseAngle + this.pts[idx].da;
+      const r = sz * this.pts[idx].dr;
+      const x = Math.cos(a) * r, y = Math.sin(a) * r;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = `rgba(15,55,35,${alpha})`;
+    ctx.fill();
+
+    // Membrane veins
+    ctx.strokeStyle = `rgba(45,204,112,${alpha*0.45})`;
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < 4; i++) {
+      const a1 = (i/4)*Math.PI*2;
+      const a2 = a1 + 1.1;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(
+        Math.cos(a1+0.4)*sz*0.55, Math.sin(a1+0.4)*sz*0.55,
+        Math.cos(a2)*sz*0.9, Math.sin(a2)*sz*0.9
+      );
+      ctx.stroke();
+    }
+
+    // Bioluminescent center
+    ctx.fillStyle = `rgba(45,204,112,${alpha*0.55})`;
+    ctx.beginPath();
+    ctx.arc(0, 0, sz*0.28*pulse, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+// ─── ENGINE ───────────────────────────────────────────────────
+const E = {
+  canvas: null, ctx: null, raf: null, t0: 0,
+  keys: {}, mx: 0, my: 0, mwx: 0, mwy: 0, mdown: false,
+  camX: 0, camY: 0,
+  player: null,
+  iceNodes: [], biofilms: [], particles: [],
+  stars: [], cracks: [],
+  stationMods: [],
+  WW: 2200, WH: 1100,
+  scannerTimer: 0,
+  bioRemovedRun: 0,
+
+  init() {
+    this.canvas = document.getElementById('c');
+    this.ctx = this.canvas.getContext('2d');
+    this.canvas.width  = 1024;
+    this.canvas.height = 576;
+
+    document.addEventListener('keydown', e => {
+      this.keys[e.code] = true;
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+      // Scanner key
+      if (e.code === 'KeyF' && (Game.scene==='SURFACE'||Game.scene==='SPACE')) {
+        this.scannerTimer = 2.5;
+        this._showScanner();
+      }
+    });
+    document.addEventListener('keyup', e => { this.keys[e.code] = false; });
+
+    this.canvas.addEventListener('mousemove', e => {
+      const r = this.canvas.getBoundingClientRect();
+      const sx = this.canvas.width / r.width;
+      const sy = this.canvas.height / r.height;
+      this.mx = (e.clientX - r.left) * sx;
+      this.my = (e.clientY - r.top)  * sy;
+    });
+    this.canvas.addEventListener('mousedown', () => this.mdown = true);
+    this.canvas.addEventListener('mouseup',   () => this.mdown = false);
+
+    // Stars (static background)
+    for (let i = 0; i < 220; i++) {
+      this.stars.push({
+        x: Math.random() * 1024,
+        y: Math.random() * 576,
+        s: rnd(0.3, 1.8),
+        a: rnd(0.3, 1)
+      });
+    }
+
+    this.canvas.style.display = 'none';
+  },
+
+  initSurface() {
+    this.player = new Player(this.WW*0.5, this.WH*0.5);
+    this.camX = 0; this.camY = 0;
+    this.bioRemovedRun = 0;
+
+    // Ice nodes — scatter around world
+    this.iceNodes = [];
+    const gridX = 5, gridY = 3;
+    for (let gx = 0; gx < gridX; gx++) {
+      for (let gy = 0; gy < gridY; gy++) {
+        const x = rnd(200 + gx * 380, 400 + gx * 380);
+        const y = rnd(250 + gy * 250, 400 + gy * 250);
+        this.iceNodes.push(new IceNode(x, y));
+      }
+    }
+
+    // Biofilm patches — scale with infection level
+    this.biofilms = [];
+    const numBio = Math.max(2, Math.floor(S.infection / 15) + 2);
+    for (let i = 0; i < numBio; i++) {
+      this.biofilms.push(new Biofilm(
+        rnd(150, this.WW - 150),
+        rnd(250, this.WH - 100),
+        rnd(18, 38),
+        'surface'
+      ));
+    }
+
+    // Ice cracks (pre-computed paths)
+    this.cracks = [];
+    for (let i = 0; i < 60; i++) {
+      const pts = [];
+      let cx = rnd(0, this.WW), cy = rnd(200, this.WH);
+      let a = rnd(0, Math.PI * 2);
+      pts.push({ x: cx, y: cy });
+      const steps = Math.floor(rnd(3, 9));
+      const segLen = rnd(20, 140) / steps;
+      for (let j = 0; j < steps; j++) {
+        a += rnd(-0.6, 0.6);
+        cx += Math.cos(a) * segLen;
+        cy += Math.sin(a) * segLen * 0.4;
+        pts.push({ x: cx, y: cy });
+      }
+      this.cracks.push({ pts, alpha: rnd(0.04, 0.14), w: rnd(0.5, 2) });
+    }
+
+    this.particles = [];
+  },
+
+  initSpace() {
+    this.player = new Player(512, 288);
+    this.camX = 0; this.camY = 0;
+    this.bioRemovedRun = 0;
+
+    // Modular station layout
+    this.stationMods = [
+      { x:512, y:288, w:130, h:65, hub:true },
+      { x:368, y:288, w:88,  h:44 },
+      { x:656, y:288, w:88,  h:44 },
+      { x:512, y:222, w:44,  h:56 },
+      { x:512, y:354, w:44,  h:56 },
+      { x:270, y:288, w:75, h:5, solar:true },
+      { x:682, y:288, w:75, h:5, solar:true },
+    ];
+
+    // Hull biofilms
+    this.biofilms = [];
+    const numBio = Math.max(1, Math.floor(S.infection / 14) + 1);
+    for (let i = 0; i < numBio; i++) {
+      const a = rnd(0, Math.PI * 2);
+      const r = rnd(25, 90);
+      this.biofilms.push(new Biofilm(512 + Math.cos(a)*r, 288 + Math.sin(a)*r, rnd(14,26), 'hull'));
+    }
+
+    this.particles = [];
+  },
+
+  start() {
+    this.t0 = performance.now();
+    this.raf = requestAnimationFrame(t => this._loop(t));
+  },
+
+  stop() {
+    if (this.raf) { cancelAnimationFrame(this.raf); this.raf = null; }
+  },
+
+  _loop(t) {
+    const dt = Math.min((t - this.t0) / 1000, 0.05);
+    this.t0 = t;
+    this._update(dt);
+    this._draw();
+    this.raf = requestAnimationFrame(ts => this._loop(ts));
+  },
+
+  _update(dt) {
+    // Camera smooth follow
+    const tx = this.player.x - 512;
+    const ty = this.player.y - 288;
+    this.camX += (tx - this.camX) * 6 * dt;
+    this.camY += (ty - this.camY) * 6 * dt;
+    this.mwx = this.mx + this.camX;
+    this.mwy = this.my + this.camY;
+
+    this.player.update(dt, this.keys, this.mwx, this.mwy, Game.scene);
+
+    // Particles
+    this.particles = this.particles.filter(p => {
+      p.x += p.vx*dt; p.y += p.vy*dt;
+      p.vy += 40*dt;
+      p.life -= dt;
+      return p.life > 0;
+    });
+
+    // Scanner timer
+    if (this.scannerTimer > 0) {
+      this.scannerTimer -= dt;
+      if (this.scannerTimer <= 0) {
+        document.getElementById('scanner-hud').style.display = 'none';
+      }
+    }
+
+    if (Game.scene === 'SURFACE') this._updateSurface(dt);
+    else if (Game.scene === 'SPACE')   this._updateSpace(dt);
+  },
+
+  _spawnParts(x, y, color, n=5) {
+    for (let i = 0; i < n; i++) {
+      this.particles.push({
+        x, y,
+        vx: rnd(-50,50), vy: rnd(-70,-10),
+        life: rnd(0.3,0.7),
+        color, size: rnd(1,3)
+      });
+    }
+  },
+
+  _showScanner() {
+    const sc = document.getElementById('scanner-hud');
+    sc.style.display = 'block';
+    const nearBio = this.biofilms.find(b => !b.dead && dist2d(b.x, b.y, this.player.x, this.player.y) < 200);
+    const localInf = Math.round(S.infection + (nearBio ? 20 : 0));
+    document.getElementById('sc-reading').textContent = localInf + '%';
+    const labels = ['LIMPO','TRAÇOS','ATIVO','CRÍTICO'];
+    const lIdx = Math.min(Math.floor(localInf/25), 3);
+    const lColors = ['var(--green)','var(--amber)','var(--amber)','var(--red)'];
+    document.getElementById('sc-label').textContent = 'FENÔMENO NADIR · ' + labels[lIdx];
+    document.getElementById('sc-label').style.color = lColors[lIdx];
+  },
+
+  _updateSurface(dt) {
+    // Boundary
+    this.player.x = clamp(this.player.x, 20, this.WW - 20);
+    this.player.y = clamp(this.player.y, 220, this.WH - 20);
+
+    // Battery drain
+    R.bat -= dt * (this.player.drilling ? 11 : 1.3);
+    if (R.bat <= 0) { Game.over('Bateria esgotada. Traje congelou a -201°C.', 'battery'); return; }
+
+    // Biofilm update & collision
+    this.player.drilling = false;
+    this.biofilms.forEach(b => {
+      b.update(dt, this.player.x, this.player.y);
+      if (this.player.drilling || (this.keys['Space'])) {
+        b.attractTo(this.player.x, this.player.y, 45, dt);
+      } else if (dist2d(b.x,b.y,this.player.x,this.player.y) < 400) {
+        b.attractTo(this.player.x, this.player.y, 10, dt);
+      }
+      if (dist2d(b.x, b.y, this.player.x, this.player.y) < b.sz + 11) {
+        R.hp -= dt * 28;
+        flashFx('rgba(45,204,112,0.12)');
+        if (R.hp <= 0) { Game.over('Biofilme infiltrou o traje EVA. Asfixia por contaminação.', 'bio'); }
+      }
+    });
+
+    // Ice node interaction
+    const near = this.iceNodes.find(n => !n.depleted && dist2d(n.x, n.y, this.player.x, this.player.y) < 52);
+    const pSurf = document.getElementById('p-surf');
+
+    if (near) {
+      pSurf.style.display = 'block';
+      if (this.mdown) {
+        this.player.drilling = true;
+        near.integrity -= dt * 38;
+        this._spawnParts(near.x, near.y, 'rgba(190,230,255,0.8)', 2);
+        // Drilling heat attracts biofilm
+        if (Math.random() < 0.014) {
+          const bf = new Biofilm(
+            this.player.x + rnd(-280,280),
+            this.player.y + rnd(-280,280),
+            rnd(18,32),
+            'surface'
+          );
+          this.biofilms.push(bf);
+        }
+        if (near.integrity <= 0) {
+          near.depleted = true;
+          R.ice++;
+          pSurf.style.display = 'none';
+          this._spawnParts(near.x, near.y, 'rgba(200,240,255,0.9)', 14);
+          if (R.ice >= 3) {
+            const infGain = 10 + Math.floor(S.infection * 0.12) + Math.floor(Math.random() * 8);
+            Game.missionReturn(R.ice, infGain);
+          }
+        }
+      }
+    } else {
+      pSurf.style.display = 'none';
+    }
+
+    // Update surface HUD
+    document.getElementById('h-hp').style.width  = R.hp + '%';
+    document.getElementById('hv-hp').textContent  = Math.ceil(R.hp);
+    document.getElementById('h-bat').style.width  = R.bat + '%';
+    document.getElementById('hv-bat').textContent = Math.ceil(R.bat);
+    document.getElementById('hv-ice').textContent = R.ice + '/3';
+
+    const hpFill = document.getElementById('h-hp');
+    hpFill.className = 'hud-mini-fill ' + (R.hp>50?'f-cyan':R.hp>25?'f-amber':'f-red');
+
+    // Contamination pulse vignette
+    if (S.infection > 40) {
+      const t = performance.now() / 1000;
+      const va = (Math.sin(t*1.8)*0.5+0.5) * 0.12 * ((S.infection-40)/60);
+      flashFx(`rgba(45,204,112,${va})`);
+    }
+  },
+
+  _updateSpace(dt) {
+    this.biofilms.forEach(b => b.update(dt, this.player.x, this.player.y));
+
+    const nearBio = this.biofilms.find(b => !b.dead && dist2d(b.x,b.y,this.player.x,this.player.y) < b.sz+18);
+    const pSpace = document.getElementById('p-space');
+
+    if (nearBio) {
+      pSpace.style.display = 'block';
+      if (this.mdown) {
+        this.player.welding = true;
+        nearBio.hp -= dt * 65;
+        this._spawnParts(nearBio.x, nearBio.y, 'rgba(255,150,50,0.8)', 3);
+        if (nearBio.hp <= 0) {
+          nearBio.dead = true;
+          this.bioRemovedRun++;
+          this.biofilms = this.biofilms.filter(b => !b.dead);
+        }
+      } else {
+        this.player.welding = false;
+      }
+    } else {
+      pSpace.style.display = 'none';
+      this.player.welding = false;
+    }
+
+    // Station collision
+    this.stationMods.forEach(m => {
+      if (m.solar) return;
+      const closestX = clamp(this.player.x, m.x-m.w/2, m.x+m.w/2);
+      const closestY = clamp(this.player.y, m.y-m.h/2, m.y+m.h/2);
+      if (dist2d(this.player.x, this.player.y, closestX, closestY) < 13) {
+        const nx = this.player.x - m.x, ny = this.player.y - m.y;
+        const nl = Math.sqrt(nx*nx+ny*ny) || 1;
+        this.player.vx = (nx/nl)*60; this.player.vy = (ny/nl)*60;
+        S.hull -= 2;
+        flashFx('rgba(255,34,68,0.12)');
+        if (S.hull <= 0) { Game.over('Dano crítico ao casco. Descompressão imediata.', 'hull'); return; }
+      }
+    });
+
+    if (R.fuel <= 0 || this.biofilms.length === 0) {
+      Game.evaReturn(this.bioRemovedRun);
+    }
+
+    // Space HUD
+    document.getElementById('h-fuel').style.width = R.fuel+'%';
+    document.getElementById('hv-fuel').textContent = Math.ceil(R.fuel);
+    document.getElementById('h-hull').style.width = S.hull+'%';
+    document.getElementById('hv-bio').textContent = this.biofilms.length;
+  },
+
+  _draw() {
+    const ctx = this.ctx;
+    const W = 1024, H = 576;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    if (Game.scene === 'SURFACE') this._drawSurface(ctx, W, H);
+    else if (Game.scene === 'SPACE') this._drawSpace(ctx, W, H);
+  },
+
+  _drawSurface(ctx, W, H) {
+    ctx.save();
+    ctx.translate(-this.camX, -this.camY);
+
+    // ── Sky strip (top 220px world)
+    const sky = ctx.createLinearGradient(0, 0, 0, 230);
+    sky.addColorStop(0, '#000408');
+    sky.addColorStop(1, '#010c1a');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, this.WW, 230);
+
+    // Stars in sky
+    this.stars.forEach(s => {
+      ctx.fillStyle = `rgba(190,220,240,${s.a*0.55})`;
+      ctx.fillRect(s.x % this.WW, s.y * 0.38, s.s, s.s);
+    });
+
+    // Distant Enceladus plumes (thin columns from horizon)
+    for (let i = 0; i < 4; i++) {
+      const px = 280 + i * 520;
+      const g = ctx.createLinearGradient(px-12, 0, px+12, 230);
+      g.addColorStop(0, 'rgba(200,230,248,0)');
+      g.addColorStop(0.4, `rgba(200,230,248,${0.03 + i*0.005})`);
+      g.addColorStop(1, 'rgba(200,230,248,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(px-12, 0, 24, 230);
+    }
+
+    // ── Ice surface
+    const ground = ctx.createLinearGradient(0, 220, 0, this.WH);
+    ground.addColorStop(0, '#081828');
+    ground.addColorStop(0.25, '#04101e');
+    ground.addColorStop(1, '#020c18');
+    ctx.fillStyle = ground;
+    ctx.fillRect(0, 220, this.WW, this.WH);
+
+    // Horizon glow
+    const hGlow = ctx.createLinearGradient(0, 210, 0, 270);
+    hGlow.addColorStop(0, 'rgba(80,160,220,0)');
+    hGlow.addColorStop(0.5, 'rgba(60,130,190,0.12)');
+    hGlow.addColorStop(1, 'rgba(40,100,160,0)');
+    ctx.fillStyle = hGlow;
+    ctx.fillRect(0, 210, this.WW, 60);
+
+    // Horizon line
+    ctx.strokeStyle = 'rgba(90,165,215,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0,225); ctx.lineTo(this.WW,225); ctx.stroke();
+
+    // Ice cracks
+    this.cracks.forEach(c => {
+      ctx.strokeStyle = `rgba(90,168,215,${c.alpha})`;
+      ctx.lineWidth = c.w;
+      ctx.beginPath();
+      ctx.moveTo(c.pts[0].x, c.pts[0].y);
+      c.pts.slice(1).forEach(p => ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+    });
+
+    // Entities
+    this.iceNodes.forEach(n => n.draw(ctx));
+    this.biofilms.forEach(b => b.draw(ctx));
+
+    // Particles
+    this.particles.forEach(p => {
+      ctx.globalAlpha = Math.min(1, p.life * 1.8);
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    // ── Darkness with flashlight cutout ──────────────────────
+    const px = this.player.x, py = this.player.y;
+
+    ctx.fillStyle = 'rgba(0,4,12,0.88)';
+    ctx.fillRect(0, 0, this.WW, this.WH);
+
+    ctx.globalCompositeOperation = 'destination-out';
+
+    // Ambient proximity glow
+    const amb = ctx.createRadialGradient(px,py,0,px,py,65);
+    amb.addColorStop(0,'rgba(255,255,255,0.55)');
+    amb.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle = amb; ctx.beginPath(); ctx.arc(px,py,65,0,Math.PI*2); ctx.fill();
+
+    // Directional cone
+    const coneA = this.player.angle;
+    const coneSpan = 0.48;
+    const coneLen = 340;
+    const cone = ctx.createRadialGradient(px,py,8,px,py,coneLen);
+    cone.addColorStop(0,'rgba(255,255,255,0.92)');
+    cone.addColorStop(0.5,'rgba(255,255,255,0.72)');
+    cone.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle = cone;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.arc(px, py, coneLen, coneA-coneSpan, coneA+coneSpan);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.globalCompositeOperation = 'source-over';
+
+    // Player on top of darkness
+    this.player.draw(ctx, 'SURFACE');
+
+    ctx.restore();
+  },
+
+  _drawSpace(ctx, W, H) {
+    // Deep space black
+    ctx.fillStyle = '#000205';
+    ctx.fillRect(0, 0, W, H);
+
+    // Static stars (no camera)
+    this.stars.forEach(s => {
+      ctx.fillStyle = `rgba(200,220,245,${s.a*0.75})`;
+      ctx.fillRect(s.x, s.y, s.s, s.s);
+    });
+
+    // Saturn in far background (partial ring, top-right)
+    const satX = W*0.12, satY = H*0.14;
+    const satR = 55;
+    const satG = ctx.createRadialGradient(satX-8,satY-8,5,satX,satY,satR);
+    satG.addColorStop(0,'rgba(190,160,100,0.55)');
+    satG.addColorStop(0.7,'rgba(160,130,80,0.35)');
+    satG.addColorStop(1,'rgba(140,110,60,0)');
+    ctx.fillStyle = satG;
+    ctx.beginPath(); ctx.arc(satX,satY,satR,0,Math.PI*2); ctx.fill();
+    // Ring
+    ctx.save();
+    ctx.translate(satX,satY);
+    ctx.scale(1,0.28);
+    ctx.strokeStyle='rgba(180,150,90,0.22)';
+    ctx.lineWidth=12;
+    ctx.beginPath(); ctx.arc(0,0,satR+18,0,Math.PI*2); ctx.stroke();
+    ctx.lineWidth=6;
+    ctx.strokeStyle='rgba(180,150,90,0.12)';
+    ctx.beginPath(); ctx.arc(0,0,satR+32,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+
+    // Enceladus (large, right side background)
+    const enX = W*0.82, enY = H*0.22, enR = 160;
+    const enG = ctx.createRadialGradient(enX-30,enY-30,18,enX,enY,enR);
+    enG.addColorStop(0,'rgba(225,240,252,0.96)');
+    enG.addColorStop(0.55,'rgba(190,218,240,0.88)');
+    enG.addColorStop(0.82,'rgba(148,198,228,0.55)');
+    enG.addColorStop(1,'rgba(80,150,200,0)');
+    ctx.fillStyle = enG;
+    ctx.beginPath(); ctx.arc(enX,enY,enR,0,Math.PI*2); ctx.fill();
+
+    // Tiger stripe cracks on Enceladus
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.strokeStyle = '#6ab8d8';
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 4; i++) {
+      const a = Math.PI*0.55 + i*0.22;
+      ctx.beginPath();
+      ctx.arc(enX, enY+enR*0.2, enR*0.55, a, a+0.38);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    // Plume from Enceladus south pole
+    const plumeG = ctx.createLinearGradient(enX, enY+enR, enX, enY+enR+140);
+    plumeG.addColorStop(0,'rgba(210,235,252,0.08)');
+    plumeG.addColorStop(0.6,'rgba(210,235,252,0.03)');
+    plumeG.addColorStop(1,'rgba(210,235,252,0)');
+    ctx.fillStyle = plumeG;
+    ctx.beginPath();
+    ctx.ellipse(enX, enY+enR+40, 18, 90, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // ── World-space elements (camera transform) ───────────────
+    ctx.save();
+    ctx.translate(-this.camX, -this.camY);
+
+    // Draw station modules
+    const infAlpha = S.infection / 100;
+    this.stationMods.forEach(m => {
+      if (m.solar) {
+        // Solar panel
+        ctx.fillStyle = 'rgba(18,45,88,0.85)';
+        ctx.strokeStyle = 'rgba(0,80,150,0.5)';
+        ctx.lineWidth = 1;
+        ctx.fillRect(m.x-m.w/2, m.y-m.h/2, m.w, m.h);
+        ctx.strokeRect(m.x-m.w/2, m.y-m.h/2, m.w, m.h);
+        // Panel cells
+        ctx.strokeStyle = 'rgba(0,60,120,0.35)';
+        const cells = 6;
+        for (let i = 1; i < cells; i++) {
+          ctx.beginPath();
+          ctx.moveTo(m.x-m.w/2+i*(m.w/cells), m.y-m.h/2);
+          ctx.lineTo(m.x-m.w/2+i*(m.w/cells), m.y+m.h/2);
+          ctx.stroke();
+        }
+      } else {
+        // Hull module
+        ctx.fillStyle = 'rgba(14,28,44,0.94)';
+        ctx.fillRect(m.x-m.w/2, m.y-m.h/2, m.w, m.h);
+        // Frame
+        ctx.strokeStyle = m.hub ? 'rgba(0,150,200,0.55)' : 'rgba(0,100,160,0.4)';
+        ctx.lineWidth = m.hub ? 1.5 : 1;
+        ctx.strokeRect(m.x-m.w/2, m.y-m.h/2, m.w, m.h);
+        // Infection overlay
+        if (infAlpha > 0) {
+          ctx.fillStyle = `rgba(15,60,35,${infAlpha*0.28})`;
+          ctx.fillRect(m.x-m.w/2, m.y-m.h/2, m.w, m.h);
+        }
+        // Port indicator lights
+        if (m.hub) {
+          for (let i = 0; i < 3; i++) {
+            const lightOk = S.infection < 50 + i*20;
+            ctx.fillStyle = lightOk ? 'rgba(0,200,232,0.6)' : 'rgba(255,34,68,0.6)';
+            ctx.beginPath();
+            ctx.arc(m.x - m.w/2 + 8 + i*12, m.y - m.h/2 + 6, 2, 0, Math.PI*2);
+            ctx.fill();
+          }
+          ctx.fillStyle = 'rgba(0,180,210,0.42)';
+          ctx.font = '8px ' + "'Share Tech Mono', monospace";
+          ctx.fillText('KHE-9', m.x - 16, m.y + 3);
+        }
+        // Conduit lines between modules
+        ctx.strokeStyle = 'rgba(0,90,140,0.25)';
+        ctx.lineWidth = 1;
+      }
+    });
+
+    // Connection lines
+    const connLines = [
+      [512,288,368,288],[512,288,656,288],
+      [512,288,512,222],[512,288,512,354],
+      [368,288,270+37,288],[656,288,682-37,288]
+    ];
+    ctx.strokeStyle = 'rgba(0,80,130,0.3)';
+    ctx.lineWidth = 3;
+    connLines.forEach(([x1,y1,x2,y2]) => {
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    });
+
+    // Biofilms on hull
+    this.biofilms.forEach(b => b.draw(ctx));
+
+    // Particles
+    this.particles.forEach(p => {
+      ctx.globalAlpha = Math.min(1, p.life * 2);
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    this.player.draw(ctx, 'SPACE');
+
+    ctx.restore();
+  }
+};
+
+// ─── BOOT ─────────────────────────────────────────────────────
+E.init();
+</script>
+</body>
+</html>

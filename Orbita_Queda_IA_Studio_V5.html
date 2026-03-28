@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Órbita & Queda - Protótipo Unificado</title>
+    <style>
+        :root {
+            --ui-cyan: #00f0ff;
+            --ui-amber: #ffb300;
+            --ui-red: #ff3c3c;
+            --ui-bio: #8bc34a;
+            --bg-deep: #050508;
+            --panel-bg: rgba(10, 15, 25, 0.95);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { background: #000; color: #fff; font-family: 'Courier New', monospace; overflow: hidden; }
+
+        #game-container {
+            position: relative;
+            width: 100vw; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            background: radial-gradient(circle, #101520 0%, #050508 100%);
+        }
+
+        canvas { 
+            background: #000; 
+            box-shadow: 0 0 50px rgba(0,0,0,1);
+            image-rendering: pixelated;
+        }
+
+        /* CRT Effect */
+        .crt::after {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 10; background-size: 100% 3px, 3px 100%; pointer-events: none;
+        }
+
+        .screen {
+            position: absolute; width: 800px; height: 600px;
+            display: none; flex-direction: column; padding: 40px; z-index: 20;
+            background: var(--panel-bg); border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+        .screen.active { display: flex; }
+
+        h1 { color: var(--ui-cyan); font-size: 2.5rem; letter-spacing: 5px; text-align: center; margin-bottom: 20px; }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold; }
+        
+        .btn {
+            background: rgba(0, 240, 255, 0.1); border: 1px solid var(--ui-cyan);
+            color: var(--ui-cyan); padding: 15px; cursor: pointer; 
+            text-transform: uppercase; font-family: inherit; transition: 0.2s;
+            margin: 5px 0;
+        }
+        .btn:hover:not(:disabled) { background: var(--ui-cyan); color: #000; box-shadow: 0 0 15px var(--ui-cyan); }
+        .btn:disabled { border-color: #444; color: #444; cursor: not-allowed; }
+
+        /* HUD */
+        #hud {
+            position: absolute; top: 0; left: 0; width: 100%; padding: 20px;
+            pointer-events: none; display: none; z-index: 15;
+        }
+        .bar-container { width: 200px; height: 10px; background: #111; border: 1px solid #333; margin-top: 5px; }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.3s; }
+
+        #flash {
+            position: absolute; inset: 0; pointer-events: none; z-index: 100; display: none;
+        }
+    </style>
+</head>
+<body class="crt">
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="flash"></div>
+
+    <!-- BOOT SCREEN -->
+    <div id="screen-boot" class="screen active">
+        <h1>ÓRBITA & QUEDA</h1>
+        <p style="color: #888; text-align: center; margin-bottom: 30px;">
+            SISTEMA OPERACIONAL KHEPRI-9 v4.2<br>
+            LOCAL: ÓRBITA DE ENCÉLADO | STATUS: CRÍTICO
+        </p>
+        <p style="margin-bottom: 20px;">
+            A estação está perdendo oxigênio. Gelo de água é necessário para eletrólise. 
+            Cuidado: As amostras coletadas mostram crescimento colonial anômalo.
+        </p>
+        <button class="btn" onclick="Game.start()">INICIALIZAR SEQUÊNCIA</button>
+    </div>
+
+    <!-- STATION SCREEN (HUB) -->
+    <div id="screen-station" class="screen">
+        <h1>ESTAÇÃO KHEPRI-9</h1>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <div>
+                <h3>STATUS GLOBAL</h3>
+                <div class="stat-row">OXIGÊNIO: <span id="stat-o2">100%</span></div>
+                <div class="stat-row" style="color: var(--ui-bio)">BIOFILME: <span id="stat-bio">0%</span></div>
+                <div class="stat-row">ESTOQUE GELO: <span id="stat-ice">0</span></div>
+            </div>
+            <div style="display: flex; flex-direction: column;">
+                <h3>ENGENHARIA</h3>
+                <button class="btn" id="btn-purga" onclick="Game.purgar()">PURGAR BIOFILME (3 GELO)</button>
+                <button class="btn" id="btn-reparo" onclick="Game.reparar()">REPOR OXIGÊNIO (2 GELO)</button>
+                <button class="btn" onclick="Game.launch('SURFACE')" style="margin-top: 20px; background: rgba(255,179,0,0.2); border-color: var(--ui-amber); color: var(--ui-amber);">DESCER PARA SUPERFÍCIE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud">
+        <div style="display: flex; justify-content: space-between;">
+            <div>
+                <div style="color: var(--ui-cyan)">INTEGRIDADE DO TRAJE</div>
+                <div class="bar-container"><div id="hud-hp-bar" class="bar-fill" style="background: var(--ui-cyan)"></div></div>
+                <div style="color: var(--ui-amber); margin-top: 10px;">BATERIA PERFURATRIZ</div>
+                <div class="bar-container"><div id="hud-energy-bar" class="bar-fill" style="background: var(--ui-amber)"></div></div>
+            </div>
+            <div style="text-align: right;">
+                <div id="hud-mode-text" style="font-size: 1.5rem; letter-spacing: 2px;">MODO: EXPLORAÇÃO</div>
+                <div style="color: var(--ui-cyan)">GELO COLETADO: <span id="hud-ice">0</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME OVER -->
+    <div id="screen-over" class="screen">
+        <h1 id="over-title" style="color: var(--ui-red);">SINAL PERDIDO</h1>
+        <p id="over-reason" style="text-align: center; margin-bottom: 30px;"></p>
+        <button class="btn" onclick="location.reload()">REINICIAR CLONE</button>
+    </div>
+</div>
+
+<script>
+/**
+ * ENGINE CORE
+ */
+const Game = {
+    canvas: document.getElementById('gameCanvas'),
+    ctx: document.gameCanvas?.getContext('2d') || document.getElementById('gameCanvas').getContext('2d'),
+    state: {
+        scene: 'BOOT',
+        o2: 100,
+        bio: 0,
+        iceStorage: 0,
+        day: 1
+    },
+    run: {
+        hp: 100,
+        energy: 100,
+        ice: 0,
+        pos: {x: 400, y: 300},
+        vel: {x: 0, y: 0},
+        angle: 0
+    },
+    entities: [],
+    input: { w:0, a:0, s:0, d:0, mouse: {x:0, y:0, down: false} },
+
+    init() {
+        window.addEventListener('keydown', e => this.input[e.key.toLowerCase()] = 1);
+        window.addEventListener('keyup', e => this.input[e.key.toLowerCase()] = 0);
+        this.canvas.addEventListener('mousemove', e => {
+            const rect = this.canvas.getBoundingClientRect();
+            this.input.mouse.x = e.clientX - rect.left;
+            this.input.mouse.y = e.clientY - rect.top;
+        });
+        this.canvas.addEventListener('mousedown', () => this.input.mouse.down = true);
+        this.canvas.addEventListener('mouseup', () => this.input.mouse.down = false);
+        
+        this.loop();
+    },
+
+    start() {
+        this.switchScene('STATION');
+        setInterval(() => this.stationTick(), 3000);
+    },
+
+    switchScene(name) {
+        this.state.scene = name;
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('hud').style.display = (name === 'SURFACE' || name === 'SPACE') ? 'block' : 'none';
+        
+        if(document.getElementById('screen-' + name.toLowerCase())) {
+            document.getElementById('screen-' + name.toLowerCase()).classList.add('active');
+        }
+
+        if(name === 'SURFACE') this.initSurface();
+        if(name === 'SPACE') this.initSpace();
+        if(name === 'STATION') this.updateStationUI();
+    },
+
+    stationTick() {
+        if(this.state.scene === 'STATION') {
+            this.state.o2 -= 1;
+            this.state.bio += 0.5;
+            this.updateStationUI();
+            if(this.state.o2 <= 0) this.gameOver("FALHA NO SUPORTE DE VIDA: OXIGÊNIO ESGOTADO");
+            if(this.state.bio >= 100) this.gameOver("CONTAMINAÇÃO TOTAL: O BIOFILME TOMOU OS PULMÕES DA TRIPULAÇÃO");
+        }
+    },
+
+    updateStationUI() {
+        document.getElementById('stat-o2').innerText = this.state.o2 + "%";
+        document.getElementById('stat-bio').innerText = Math.floor(this.state.bio) + "%";
+        document.getElementById('stat-ice').innerText = this.state.iceStorage;
+        document.getElementById('btn-purga').disabled = this.state.iceStorage < 3;
+        document.getElementById('btn-reparo').disabled = this.state.iceStorage < 2;
+    },
+
+    purgar() {
+        this.state.iceStorage -= 3;
+        this.state.bio = Math.max(0, this.state.bio - 20);
+        this.updateStationUI();
+    },
+
+    reparar() {
+        this.state.iceStorage -= 2;
+        this.state.o2 = Math.min(100, this.state.o2 + 30);
+        this.updateStationUI();
+    },
+
+    gameOver(reason) {
+        this.state.scene = 'OVER';
+        this.switchScene('OVER');
+        document.getElementById('over-reason').innerText = reason;
+    },
+
+    // --- LOGICA DE MISSÃO ---
+
+    initSurface() {
+        this.run = { hp: 100, energy: 100, ice: 0, pos: {x: 400, y: 500}, vel: {x: 0, y: 0}, angle: 0 };
+        this.entities = [];
+        document.getElementById('hud-mode-text').innerText = "MODO: EXPLORAÇÃO";
+        // Gerar veios de gelo
+        for(let i=0; i<5; i++) {
+            this.entities.push({ 
+                type: 'ICE', 
+                x: 100 + Math.random()*600, 
+                y: 100 + Math.random()*300, 
+                hp: 100 
+            });
+        }
+    },
+
+    initSpace() {
+        this.run.pos = {x: 400, y: 550};
+        this.run.vel = {x: 0, y: 0};
+        this.entities = [];
+        document.getElementById('hud-mode-text').innerText = "MODO: RETORNO ÓRBITA";
+        // Gerar detritos/biomassa
+        for(let i=0; i<10; i++) {
+            this.entities.push({ 
+                type: 'DEBRIS', 
+                x: Math.random()*800, 
+                y: Math.random()*400, 
+                size: 10 + Math.random()*20 
+            });
+        }
+    },
+
+    launch(mode) {
+        this.switchScene(mode);
+    },
+
+    loop() {
+        const now = Date.now();
+        const dt = 16/1000;
+
+        this.update(dt);
+        this.draw();
+
+        requestAnimationFrame(() => this.loop());
+    },
+
+    update(dt) {
+        if(this.state.scene === 'STATION' || this.state.scene === 'OVER') return;
+
+        // Movimentação
+        if(this.state.scene === 'SURFACE') {
+            const speed = 150;
+            this.run.vel.x = (this.input.d - this.input.a) * speed;
+            this.run.vel.y = (this.input.s - this.input.w) * speed;
+            this.run.pos.x += this.run.vel.x * dt;
+            this.run.pos.y += this.run.vel.y * dt;
+            this.run.angle = Math.atan2(this.input.mouse.y - this.run.pos.y, this.input.mouse.x - this.run.pos.x);
+        }
+
+        if(this.state.scene === 'SPACE') {
+            const thrust = 400;
+            if(this.input.w) {
+                this.run.vel.x += Math.cos(this.run.angle) * thrust * dt;
+                this.run.vel.y += Math.sin(this.run.angle) * thrust * dt;
+            }
+            if(this.input.a) this.run.angle -= 3 * dt;
+            if(this.input.d) this.run.angle += 3 * dt;
+            
+            this.run.vel.x *= 0.99; // Drag espacial leve
+            this.run.vel.y *= 0.99;
+            this.run.pos.x += this.run.vel.x * dt;
+            this.run.pos.y += this.run.vel.y * dt;
+        }
+
+        // Interação Perfuratriz
+        if(this.input.mouse.down && this.run.energy > 0) {
+            this.run.energy -= 10 * dt;
+            if(this.state.scene === 'SURFACE') {
+                this.entities.forEach(e => {
+                    if(e.type === 'ICE') {
+                        const dist = Math.hypot(e.x - (this.run.pos.x + Math.cos(this.run.angle)*20), e.y - (this.run.pos.y + Math.sin(this.run.angle)*20));
+                        if(dist < 30) {
+                            e.hp -= 50 * dt;
+                            if(e.hp <= 0 && !e.dead) { e.dead = true; this.run.ice++; }
+                        }
+                    }
+                });
+            }
+        } else {
+            this.run.energy = Math.min(100, this.run.energy + 5 * dt);
+        }
+
+        // Colisões e Limites
+        if(this.run.pos.y < 0) {
+            if(this.state.scene === 'SURFACE') {
+                if(this.run.ice > 0) this.switchScene('SPACE');
+                else this.run.pos.y = 0;
+            } else if(this.state.scene === 'SPACE') {
+                this.state.iceStorage += this.run.ice;
+                this.switchScene('STATION');
+            }
+        }
+
+        // Atualizar HUD
+        document.getElementById('hud-hp-bar').style.width = this.run.hp + "%";
+        document.getElementById('hud-energy-bar').style.width = this.run.energy + "%";
+        document.getElementById('hud-ice').innerText = this.run.ice;
+    },
+
+    draw() {
+        const ctx = this.ctx;
+        ctx.clearRect(0,0,800,600);
+
+        if(this.state.scene === 'STATION' || this.state.scene === 'OVER') return;
+
+        // Grid de fundo
+        ctx.strokeStyle = '#111';
+        for(let i=0; i<800; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,600); ctx.stroke(); }
+        for(let i=0; i<600; i+=50) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(800,i); ctx.stroke(); }
+
+        // Entidades
+        this.entities.forEach(e => {
+            if(e.dead) return;
+            ctx.save();
+            if(e.type === 'ICE') {
+                ctx.fillStyle = '#00f0ff33';
+                ctx.strokeStyle = '#00f0ff';
+                ctx.beginPath(); ctx.arc(e.x, e.y, 20, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#00f0ff';
+                ctx.fillRect(e.x-10, e.y+25, 20 * (e.hp/100), 2);
+            }
+            if(e.type === 'DEBRIS') {
+                ctx.fillStyle = '#333';
+                ctx.beginPath(); ctx.rect(e.x, e.y, e.size, e.size); ctx.fill();
+            }
+            ctx.restore();
+        });
+
+        // Jogador
+        ctx.save();
+        ctx.translate(this.run.pos.x, this.run.pos.y);
+        ctx.rotate(this.run.angle);
+        
+        if(this.state.scene === 'SURFACE') {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-10, -10, 20, 20);
+            ctx.fillStyle = varColor('ui-amber');
+            ctx.fillRect(10, -2, 15, 4); // Perfuratriz
+            if(this.input.mouse.down && this.run.energy > 0) {
+                ctx.fillStyle = '#ff5722';
+                ctx.fillRect(25, -2, 10 + Math.random()*10, 4);
+            }
+        } else {
+            // Nave
+            ctx.strokeStyle = '#fff';
+            ctx.beginPath();
+            ctx.moveTo(15, 0); ctx.lineTo(-10, -10); ctx.lineTo(-10, 10); ctx.closePath();
+            ctx.stroke();
+            if(this.input.w) {
+                ctx.fillStyle = '#ffb300';
+                ctx.fillRect(-15, -4, 5, 8);
+            }
+        }
+        ctx.restore();
+
+        // Overlay de Radiação/Biofilme (Efeito Visual)
+        if(this.state.bio > 50) {
+            ctx.fillStyle = `rgba(139, 195, 74, ${ (this.state.bio - 50) / 200 })`;
+            ctx.fillRect(0,0,800,600);
+        }
+    }
+};
+
+function varColor(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue('--' + name).trim();
+}
+
+Game.init();
+</script>
+</body>
+</html>
